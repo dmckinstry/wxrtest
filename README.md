@@ -56,6 +56,32 @@ The application uses Three.js (loaded via CDN) for 3D rendering and WebXR suppor
 - **Animation**: Gentle rotation of text and cube
 - **VR Controls**: Full WebXR controller support
 
+### Testing
+
+The project includes a comprehensive test suite following TDD best practices:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+**Test Coverage**: 100% (Statements, Branches, Functions, Lines)
+
+The test suite covers utility functions including:
+- Canvas text rendering
+- Aspect ratio calculations
+- Rotation animations
+- Configuration validation
+- Color validation
+
+For more details, see [tests/README.md](tests/README.md).
+
 ## Browser Compatibility
 
 - Meta Quest Browser (recommended for Meta Quest)
