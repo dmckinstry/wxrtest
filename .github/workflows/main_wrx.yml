@@ -5,7 +5,7 @@ name: Build and deploy Node.js app to Azure Web App - wrx
 
 on:
   workflow_run:
-    workflows: ["ci.yml"]
+    workflows: ["CI"]
     types:
       - completed
 
@@ -68,3 +68,4 @@ jobs:
           app-name: 'wrx'
           slot-name: 'Production'
           package: .
+
