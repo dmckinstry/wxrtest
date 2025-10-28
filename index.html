@@ -63,10 +63,11 @@
     <script type="module">
         import * as THREE from 'three';
         import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { createGame } from './src/game-controller.js';
 
         let camera, scene, renderer;
         let controller1, controller2;
-        let textMesh;
+        let gameController;
 
         init();
         animate();
@@ -74,7 +75,7 @@
         function init() {
             // Create scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x505050);
+            scene.background = new THREE.Color(0x101010);
 
             // Create camera
             camera = new THREE.PerspectiveCamera(
@@ -86,26 +87,15 @@
             camera.position.set(0, 1.6, 3);
 
             // Add ambient light
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
             scene.add(ambientLight);
-
-            // Add directional light
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(1, 2, 3);
-            scene.add(directionalLight);
-
-            // Create "Hello World" text using simple 3D text
-            createHelloWorldText();
-
-            // Add a grid floor for reference
-            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
-            scene.add(gridHelper);
 
             // Create renderer with XR support
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
+            renderer.shadowMap.enabled = true;
             document.body.appendChild(renderer.domElement);
 
             // Add VR Button
@@ -132,52 +122,18 @@
             controller1.add(new THREE.Line(geometry, material));
             controller2.add(new THREE.Line(geometry, material));
 
+            // Initialize game
+            gameController = createGame(THREE, scene, camera, renderer);
+            
+            // Update info text
+            document.getElementById('info').innerHTML = `
+                <h3>3D Rogue-like Dungeon Crawler</h3>
+                <p>Use left controller joystick to move</p>
+                <p>Explore the dungeon and defeat enemies!</p>
+            `;
+
             // Handle window resize
             window.addEventListener('resize', onWindowResize);
-        }
-
-        function createHelloWorldText() {
-            // Use a plane with text texture
-            const canvas = document.createElement('canvas');
-            canvas.width = 1024;
-            canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-            
-            // Draw text on canvas
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.font = 'Bold 100px Arial';
-            ctx.fillStyle = '#00ff00';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('HELLO WORLD', canvas.width / 2, canvas.height / 2);
-            
-            // Create texture from canvas
-            const texture = new THREE.CanvasTexture(canvas);
-            
-            // Create plane with text
-            const geometry = new THREE.PlaneGeometry(5, 1.25);
-            const material = new THREE.MeshBasicMaterial({ 
-                map: texture, 
-                side: THREE.DoubleSide,
-                transparent: true
-            });
-            
-            textMesh = new THREE.Mesh(geometry, material);
-            textMesh.position.set(0, 1.6, 0);
-            
-            scene.add(textMesh);
-
-            // Add a rotating cube for fun
-            const cubeGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-            const cubeMaterial = new THREE.MeshPhongMaterial({ 
-                color: 0xff6600,
-                emissive: 0x441100
-            });
-            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-            cube.position.set(0, 1.6, -1.5);
-            cube.name = 'rotatingCube';
-            scene.add(cube);
         }
 
         function onWindowResize() {
@@ -191,16 +147,9 @@
         }
 
         function render() {
-            // Rotate the text slightly for effect
-            if (textMesh) {
-                textMesh.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
-            }
-
-            // Rotate the cube
-            const cube = scene.getObjectByName('rotatingCube');
-            if (cube) {
-                cube.rotation.x += 0.01;
-                cube.rotation.y += 0.01;
+            // Update game
+            if (gameController) {
+                gameController.update();
             }
 
             renderer.render(scene, camera);
