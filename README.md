@@ -1,15 +1,43 @@
 # wxrtest
 
-A simple WebXR "Hello World" application compatible with Meta Quest and other WebXR-enabled devices.
+A 3D Rogue-like Dungeon Crawler with Smooth VR Locomotion for Meta Quest and other WebXR-enabled devices.
 
 ## Features
 
-- Displays "HELLO WORLD" text in 3D space
-- Animated rotating cube
-- Full WebXR VR support
-- Compatible with Meta Quest headsets
-- Grid floor for spatial reference
-- Controller support
+### Core Gameplay
+- **Procedural Dungeon Generation**: Seeded random generation with 6-9 rooms per level
+- **Turn-Based Combat**: Classic rogue-like tactical combat with d20 mechanics
+- **Smooth VR Locomotion**: Controller joystick movement with distance-based turn advancement
+- **Fog of War**: Radius-based visibility with exploration memory
+- **Progressive Difficulty**: Enemy count and strength scale with dungeon depth
+- **Permadeath**: Classic rogue-like permadeath with detailed statistics
+
+### Visual Design
+- **Low-Poly Aesthetics**: Flat-shaded materials for clean VR performance
+- **Distinct Enemy Types**: 
+  - Goblins (cubes) - Common early-game enemies
+  - Skeletons (cones) - Mid-game threats from level 3+
+  - Slimes (spheres) - Weak but numerous
+  - Dragons (tetrahedrons) - Rare powerful foes from level 7+
+- **Dynamic Lighting**: Per-room point lights that activate when explored
+- **Movement Budget Indicator**: Visual ring showing remaining movement in combat mode
+
+### Game Systems
+- **Hunger System**: Decreases each turn, leading to starvation death at 0
+- **Experience & Leveling**: Gain XP from kills, level up for increased stats
+- **26-Slot Inventory**: Classic a-z keyed inventory system
+- **Partial Item Identification**: Weapons/armor auto-identified, potions/scrolls require discovery
+- **Combat Mode Detection**: Automatically enables turn-based mode when enemies are nearby (10m radius)
+- **A* Pathfinding**: Intelligent enemy AI pursuing the player
+- **Procedural Audio**: Web Audio API-generated sounds for all game events
+
+### Statistics Tracking
+- Turns played
+- Kills
+- Gold collected
+- Deepest dungeon level reached
+- Death type (hunger vs combat)
+- Run seed for replay
 
 ## Prerequisites
 
@@ -37,7 +65,7 @@ npm start
 3. Open your browser to `http://localhost:8080`
 
 ### Option 3: Deploy to a Web Server
-Upload the `index.html` file to any web server with HTTPS enabled, then access it from your Meta Quest browser.
+Upload the files to any web server with HTTPS enabled, then access it from your Meta Quest browser.
 
 ## Testing on Meta Quest
 
@@ -45,16 +73,44 @@ Upload the `index.html` file to any web server with HTTPS enabled, then access i
 2. Open the Meta Quest Browser on your headset
 3. Navigate to your application URL
 4. Click the "Enter VR" button
-5. Put on your headset and enjoy the "Hello World" experience!
+5. Use the left controller joystick to move through the dungeon
+6. Explore, fight enemies, and try to descend as deep as possible!
+
+## Controls
+
+- **Left Controller Joystick**: Move character (smooth locomotion)
+- **Movement Threshold**: Moving 2 meters advances one turn
+- **Combat Mode**: Automatically activates when enemies are within 10 meters
+- **HUD**: Displays HP, Hunger, Level, and Turn count
 
 ## Development
 
-The application uses Three.js (loaded via CDN) for 3D rendering and WebXR support. The main components are:
+The application is built with:
+- **Three.js**: 3D rendering and WebXR support
+- **Custom Rogue-like Engine**: Modular game systems for dungeon crawling
 
-- **Scene Setup**: 3D environment with lighting and camera
-- **Text Display**: "HELLO WORLD" rendered on a textured plane
-- **Animation**: Gentle rotation of text and cube
-- **VR Controls**: Full WebXR controller support
+### Project Structure
+```
+src/
+  rogue/
+    constants.js       - Game constants and configuration
+    game-state.js      - Immutable state management
+    turn-manager.js    - Turn-based mechanics
+    grid-utils.js      - Spatial calculations and A* pathfinding
+    dungeon-generator.js - Procedural generation with seeded RNG
+    visibility.js      - Fog of war system
+    render-utils.js    - 3D rendering utilities
+    movement.js        - VR locomotion system
+    entity-manager.js  - Enemy and item factories
+    combat.js          - Combat mechanics
+    inventory.js       - Item management
+    audio-generator.js - Procedural audio
+  game-controller.js   - Main game integration
+  webxr-utils.js       - WebXR utility functions
+tests/
+  unit/              - Comprehensive test suite
+index.html           - Main application entry point
+```
 
 ### Testing
 
@@ -71,16 +127,42 @@ npm run test:watch
 npm run test:coverage
 ```
 
-**Test Coverage**: 100% (Statements, Branches, Functions, Lines)
+**Test Coverage**: 192 tests covering all core systems
 
-The test suite covers utility functions including:
-- Canvas text rendering
-- Aspect ratio calculations
-- Rotation animations
-- Configuration validation
-- Color validation
+The test suite covers:
+- Grid utilities and pathfinding
+- Game state management
+- Turn-based mechanics
+- Dungeon generation
+- Visibility and fog of war
+- Movement and combat
+- Inventory system
+- Entity management
 
-For more details, see [tests/README.md](tests/README.md).
+## Game Design
+
+### Turn Advancement
+- Player movement accumulates distance
+- Each 2 meters of movement = 1 turn
+- Turns consume 1 hunger point
+- Enemy turns process sequentially after player turn
+
+### Combat System
+- D20-based attack rolls
+- AC (Armor Class) defense
+- Critical hits on natural 20 (double damage)
+- Weapon and armor equipment modifies stats
+
+### Dungeon Progression
+- Each level generates 6-9 rooms
+- Enemy count: floor(level * 1.5)
+- Stronger enemies appear at deeper levels
+- Green stairs down lead to next level
+
+### Enemy Scaling
+- Base stats increase 20% per dungeon level
+- AC increases by 1 every 2 levels
+- XP rewards scale with difficulty
 
 ## Browser Compatibility
 
@@ -94,6 +176,7 @@ For more details, see [tests/README.md](tests/README.md).
 - WebXR requires HTTPS in production (localhost works for development)
 - The application automatically detects WebXR support and displays appropriate UI
 - Controllers will be tracked automatically when in VR mode
+- Game uses seeded random generation for consistent dungeon layouts per seed
 
 ## License
 
