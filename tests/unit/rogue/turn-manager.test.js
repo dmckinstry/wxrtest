@@ -8,6 +8,8 @@ import {
     processNextAction,
     shouldAdvanceTurn,
     advanceTurn,
+    executePlayerAction,
+    processEnemyTurns,
     checkTurnAdvancement
 } from '../../../src/rogue/turn-manager.js';
 import { createInitialState } from '../../../src/rogue/game-state.js';
@@ -180,6 +182,43 @@ describe('Turn Manager', () => {
             const result = checkTurnAdvancement(state);
             
             expect(result).toBe(false);
+        });
+    });
+
+    describe('executePlayerAction', () => {
+        it('should advance turn after action', () => {
+            // Arrange
+            const state = createInitialState();
+            const action = { type: 'move', data: { x: 5, y: 5 } };
+            
+            // Act
+            const newState = executePlayerAction(state, action);
+            
+            // Assert
+            expect(newState.turnCount).toBe(1);
+            expect(newState.player.hunger).toBe(999);
+        });
+
+        it('should reset accumulated movement', () => {
+            const state = { ...createInitialState(), accumulatedMovement: 3.0 };
+            const action = { type: 'attack', data: {} };
+            
+            const newState = executePlayerAction(state, action);
+            
+            expect(newState.accumulatedMovement).toBe(0);
+        });
+    });
+
+    describe('processEnemyTurns', () => {
+        it('should return state unchanged for now', () => {
+            // Arrange
+            const state = createInitialState();
+            
+            // Act
+            const newState = processEnemyTurns(state);
+            
+            // Assert
+            expect(newState).toBe(state);
         });
     });
 });

@@ -166,6 +166,60 @@ describe('Inventory System', () => {
             
             expect(result.newState.player.hp).toBe(30);
         });
+
+        it('should handle unknown potion type', () => {
+            const inventory = createInventory();
+            const potion = {
+                type: ITEM_TYPES.POTION,
+                trueType: 'unknown_type'
+            };
+            const state = {
+                player: { hp: 10, maxHp: 20 },
+                statistics: { itemsUsed: 0 }
+            };
+            const addResult = addItemToInventory(inventory, potion);
+            
+            const result = useItem(addResult.inventory, 0, state);
+            
+            // Should still succeed but not apply any effect
+            expect(result.success).toBe(true);
+        });
+
+        it('should handle unknown scroll type', () => {
+            const inventory = createInventory();
+            const scroll = {
+                type: ITEM_TYPES.SCROLL,
+                trueType: 'unknown_type'
+            };
+            const state = {
+                player: { hp: 20, maxHp: 20 },
+                statistics: { itemsUsed: 0 }
+            };
+            const addResult = addItemToInventory(inventory, scroll);
+            
+            const result = useItem(addResult.inventory, 0, state);
+            
+            // Should still succeed but not apply any effect
+            expect(result.success).toBe(true);
+        });
+
+        it('should handle using weapon (non-usable item)', () => {
+            const inventory = createInventory();
+            const weapon = {
+                type: ITEM_TYPES.WEAPON,
+                name: 'Sword'
+            };
+            const state = {
+                player: { hp: 20, maxHp: 20 },
+                statistics: { itemsUsed: 0 }
+            };
+            const addResult = addItemToInventory(inventory, weapon);
+            
+            const result = useItem(addResult.inventory, 0, state);
+            
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('Cannot use');
+        });
     });
 
     describe('equipItem', () => {
