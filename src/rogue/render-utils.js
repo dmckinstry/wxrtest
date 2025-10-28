@@ -6,6 +6,20 @@
 import { PALETTE, MATERIAL_PROPS, TILE_SIZE } from './constants.js';
 
 /**
+ * Get floor color based on visibility state
+ * @param {string} visibilityState - 'visible', 'explored', or 'hidden'
+ * @returns {number} Color hex value
+ */
+export function getFloorColor(visibilityState) {
+    if (visibilityState === 'explored') {
+        return PALETTE.EXPLORED;
+    } else if (visibilityState === 'hidden') {
+        return PALETTE.HIDDEN;
+    }
+    return PALETTE.FLOOR;
+}
+
+/**
  * Create a wall mesh
  * @param {object} THREE - Three.js library
  * @param {number} x - World X position
@@ -35,13 +49,7 @@ export function createWall(THREE, x, z) {
  */
 export function createFloor(THREE, x, z, visibilityState = 'visible') {
     const geometry = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE);
-    
-    let color = PALETTE.FLOOR;
-    if (visibilityState === 'explored') {
-        color = PALETTE.EXPLORED;
-    } else if (visibilityState === 'hidden') {
-        color = PALETTE.HIDDEN;
-    }
+    const color = getFloorColor(visibilityState);
     
     const material = new THREE.MeshStandardMaterial({
         color: color,
@@ -96,12 +104,7 @@ export function createRoomLight(THREE, x, z, visible = false) {
  * @param {string} visibilityState - 'visible', 'explored', or 'hidden'
  */
 export function updateFloorVisibility(mesh, visibilityState) {
-    let color = PALETTE.FLOOR;
-    if (visibilityState === 'explored') {
-        color = PALETTE.EXPLORED;
-    } else if (visibilityState === 'hidden') {
-        color = PALETTE.HIDDEN;
-    }
+    const color = getFloorColor(visibilityState);
     mesh.material.color.setHex(color);
 }
 
@@ -185,6 +188,57 @@ export function createPlayer(THREE) {
 }
 
 /**
+ * Calculate HP bar color based on percentage
+ * @param {number} hpPercent - HP percentage (0-1)
+ * @returns {string} Hex color string
+ */
+export function getHPColor(hpPercent) {
+    if (hpPercent > 0.6) return '#00ff00';
+    if (hpPercent > 0.3) return '#ffff00';
+    return '#ff0000';
+}
+
+/**
+ * Calculate hunger bar color based on percentage
+ * @param {number} hungerPercent - Hunger percentage (0-1)
+ * @returns {string} Hex color string
+ */
+export function getHungerColor(hungerPercent) {
+    if (hungerPercent > 0.5) return '#00ff00';
+    if (hungerPercent > 0.2) return '#ffaa00';
+    return '#ff0000';
+}
+
+/**
+ * Format HUD text lines from stats
+ * @param {object} stats - Stats to display {hp, maxHp, hunger, maxHunger, level, turn}
+ * @returns {Array<{text: string, color: string}>} Formatted text lines with colors
+ */
+export function formatHUDText(stats) {
+    const hpPercent = stats.hp / stats.maxHp;
+    const hungerPercent = stats.hunger / stats.maxHunger;
+    
+    return [
+        {
+            text: `HP: ${stats.hp}/${stats.maxHp}`,
+            color: getHPColor(hpPercent)
+        },
+        {
+            text: `Hunger: ${stats.hunger}`,
+            color: getHungerColor(hungerPercent)
+        },
+        {
+            text: `Level: ${stats.level}`,
+            color: '#00ff00'
+        },
+        {
+            text: `Turn: ${stats.turn}`,
+            color: '#00ff00'
+        }
+    ];
+}
+
+/**
  * Create HUD canvas for stats display
  * @param {object} stats - Stats to display {hp, maxHp, hunger, level, turn}
  * @returns {HTMLCanvasElement} Canvas with HUD
@@ -201,34 +255,16 @@ export function createHUDCanvas(stats) {
     
     // Text
     ctx.font = 'Bold 30px Arial';
-    ctx.fillStyle = '#00ff00';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     
-    let y = 10;
     const lineHeight = 40;
+    const lines = formatHUDText(stats);
     
-    // HP
-    const hpPercent = stats.hp / stats.maxHp;
-    const hpColor = hpPercent > 0.6 ? '#00ff00' : hpPercent > 0.3 ? '#ffff00' : '#ff0000';
-    ctx.fillStyle = hpColor;
-    ctx.fillText(`HP: ${stats.hp}/${stats.maxHp}`, 10, y);
-    y += lineHeight;
-    
-    // Hunger
-    const hungerPercent = stats.hunger / stats.maxHunger;
-    const hungerColor = hungerPercent > 0.5 ? '#00ff00' : hungerPercent > 0.2 ? '#ffaa00' : '#ff0000';
-    ctx.fillStyle = hungerColor;
-    ctx.fillText(`Hunger: ${stats.hunger}`, 10, y);
-    y += lineHeight;
-    
-    // Level
-    ctx.fillStyle = '#00ff00';
-    ctx.fillText(`Level: ${stats.level}`, 10, y);
-    y += lineHeight;
-    
-    // Turn
-    ctx.fillText(`Turn: ${stats.turn}`, 10, y);
+    lines.forEach((line, index) => {
+        ctx.fillStyle = line.color;
+        ctx.fillText(line.text, 10, 10 + index * lineHeight);
+    });
     
     return canvas;
 }
