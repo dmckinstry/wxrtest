@@ -68,11 +68,12 @@ import {
  * @param {object} scene - Three.js scene
  * @param {object} camera - Three.js camera
  * @param {object} renderer - Three.js renderer with XR enabled
+ * @param {number} customSeed - Optional custom seed for reproducible dungeons
  * @returns {object} Game controller
  */
-export function createGame(THREE, scene, camera, renderer) {
+export function createGame(THREE, scene, camera, renderer, customSeed = null) {
     // Initialize game state
-    const seed = Date.now();
+    const seed = customSeed !== null ? customSeed : Date.now();
     let gameState = createInitialState(seed);
     
     // Generate initial dungeon
@@ -99,7 +100,7 @@ export function createGame(THREE, scene, camera, renderer) {
     );
     
     // Create scene objects
-    const dungeonMeshes = [];
+    const dungeonMeshes = new Map(); // Use Map with position keys instead of array
     const enemyMeshes = new Map();
     const lightMap = new Map();
     
@@ -108,23 +109,24 @@ export function createGame(THREE, scene, camera, renderer) {
         for (let x = 0; x < dungeon.width; x++) {
             const tile = dungeon.grid[y][x];
             const world = gridToWorld(x, y);
+            const key = `${x},${y}`;
             
             if (tile === 'wall') {
                 const wall = createWall(THREE, world.x, world.z);
                 scene.add(wall);
-                dungeonMeshes.push(wall);
+                dungeonMeshes.set(key, wall);
             } else if (tile === 'floor' || tile === 'door') {
                 const floor = createFloor(THREE, world.x, world.z, 'hidden');
                 scene.add(floor);
-                dungeonMeshes.push(floor);
+                dungeonMeshes.set(key, floor);
             } else if (tile === 'stairs_down') {
                 const floor = createFloor(THREE, world.x, world.z, 'hidden');
                 scene.add(floor);
-                dungeonMeshes.push(floor);
+                dungeonMeshes.set(key, floor);
                 
                 const stairs = createStairsDown(THREE, world.x, world.z);
                 scene.add(stairs);
-                dungeonMeshes.push(stairs);
+                dungeonMeshes.set(`${key}_stairs`, stairs);
             }
         }
     }
@@ -182,16 +184,26 @@ export function createGame(THREE, scene, camera, renderer) {
     const ambientDrone = createAmbientDrone(0.05);
     
     // Last update time for delta calculation
-    let lastTime = Date.now();
+    let lastTime = performance.now();
     
     // Combat log
     const combatLog = [];
+    
+    // Track last HUD stats to avoid unnecessary updates
+    let lastHUDStats = {
+        hp: gameState.player.hp,
+        maxHp: gameState.player.maxHp,
+        hunger: gameState.player.hunger,
+        maxHunger: gameState.player.maxHunger,
+        level: gameState.player.level,
+        turn: gameState.turnCount
+    };
     
     /**
      * Update game state and render
      */
     function update() {
-        const currentTime = Date.now();
+        const currentTime = performance.now();
         const deltaTime = (currentTime - lastTime) / 1000;
         lastTime = currentTime;
         
@@ -281,34 +293,36 @@ export function createGame(THREE, scene, camera, renderer) {
      * Update dungeon tile visibility
      */
     function updateDungeonVisibility() {
-        let meshIndex = 0;
         for (let y = 0; y < dungeon.height; y++) {
             for (let x = 0; x < dungeon.width; x++) {
                 const key = `${x},${y}`;
                 const tile = dungeon.grid[y][x];
                 
                 if (tile === 'wall') {
-                    meshIndex++;
                     continue;
                 }
                 
                 const visible = gameState.visibleTiles.has(key);
                 const explored = gameState.exploredTiles.has(key);
                 
-                if (dungeonMeshes[meshIndex]) {
-                    dungeonMeshes[meshIndex].visible = visible || explored;
+                const mesh = dungeonMeshes.get(key);
+                if (mesh) {
+                    mesh.visible = visible || explored;
                     
                     if (tile === 'floor' || tile === 'door') {
                         const visState = visible ? 'visible' : explored ? 'explored' : 'hidden';
                         const color = visState === 'visible' ? PALETTE.FLOOR : 
                                      visState === 'explored' ? PALETTE.EXPLORED : PALETTE.HIDDEN;
-                        dungeonMeshes[meshIndex].material.color.setHex(color);
+                        mesh.material.color.setHex(color);
                     }
                 }
                 
-                meshIndex++;
+                // Update stairs visibility if present
                 if (tile === 'stairs_down') {
-                    meshIndex++; // Skip stairs mesh
+                    const stairsMesh = dungeonMeshes.get(`${key}_stairs`);
+                    if (stairsMesh) {
+                        stairsMesh.visible = visible || explored;
+                    }
                 }
             }
         }
@@ -398,18 +412,62 @@ export function createGame(THREE, scene, camera, renderer) {
     }
     
     /**
-     * Update HUD display
+     * Update HUD display (only if stats changed)
      */
     function updateHUD() {
-        const newCanvas = createHUDCanvas({
+        const currentStats = {
             hp: gameState.player.hp,
             maxHp: gameState.player.maxHp,
             hunger: gameState.player.hunger,
             maxHunger: gameState.player.maxHunger,
             level: gameState.player.level,
             turn: gameState.turnCount
-        });
-        hudTexture.image = newCanvas;
+        };
+        
+        // Check if stats changed
+        if (JSON.stringify(currentStats) === JSON.stringify(lastHUDStats)) {
+            return; // No update needed
+        }
+        
+        lastHUDStats = currentStats;
+        
+        // Reuse existing canvas, just redraw content
+        const ctx = hudCanvas.getContext('2d');
+        
+        // Clear canvas
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, hudCanvas.width, hudCanvas.height);
+        
+        // Redraw text
+        ctx.font = 'Bold 30px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        let y = 10;
+        const lineHeight = 40;
+        
+        // HP
+        const hpPercent = currentStats.hp / currentStats.maxHp;
+        const hpColor = hpPercent > 0.6 ? '#00ff00' : hpPercent > 0.3 ? '#ffff00' : '#ff0000';
+        ctx.fillStyle = hpColor;
+        ctx.fillText(`HP: ${currentStats.hp}/${currentStats.maxHp}`, 10, y);
+        y += lineHeight;
+        
+        // Hunger
+        const hungerPercent = currentStats.hunger / currentStats.maxHunger;
+        const hungerColor = hungerPercent > 0.5 ? '#00ff00' : hungerPercent > 0.2 ? '#ffaa00' : '#ff0000';
+        ctx.fillStyle = hungerColor;
+        ctx.fillText(`Hunger: ${currentStats.hunger}`, 10, y);
+        y += lineHeight;
+        
+        // Level
+        ctx.fillStyle = '#00ff00';
+        ctx.fillText(`Level: ${currentStats.level}`, 10, y);
+        y += lineHeight;
+        
+        // Turn
+        ctx.fillText(`Turn: ${currentStats.turn}`, 10, y);
+        
         hudTexture.needsUpdate = true;
     }
     
