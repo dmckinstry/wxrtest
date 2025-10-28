@@ -4,7 +4,7 @@
  */
 
 import { TILE_SIZE, VISIBILITY_RADIUS } from './constants.js';
-import { worldToGrid, distance } from './grid-utils.js';
+import { distance } from './grid-utils.js';
 
 /**
  * Compute visible tiles from a position using radius-based visibility

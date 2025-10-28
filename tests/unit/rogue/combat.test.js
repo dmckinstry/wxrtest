@@ -1,7 +1,7 @@
 /**
  * Unit tests for combat system
  */
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import {
     rollD20,
     rollDamage,
@@ -142,11 +142,9 @@ describe('Combat System', () => {
             
             // We can't directly control the random roll, but we can verify the logic
             // by checking that critical hits exist in results over many rolls
-            let foundCritical = false;
             for (let i = 0; i < 100; i++) {
                 const result = executeAttack(attacker, defender);
                 if (result.critical) {
-                    foundCritical = true;
                     expect(result.damage).toBeGreaterThan(1); // Should be doubled
                     break;
                 }
@@ -161,11 +159,9 @@ describe('Combat System', () => {
             const defender = { ac: 30, hp: 20 };
             
             // Try multiple times to ensure we get a miss
-            let foundMiss = false;
             for (let i = 0; i < 50; i++) {
                 const result = executeAttack(attacker, defender);
                 if (!result.hit) {
-                    foundMiss = true;
                     expect(result.damage).toBe(0);
                     expect(result.killed).toBe(false);
                     break;

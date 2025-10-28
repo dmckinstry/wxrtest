@@ -88,7 +88,7 @@ describe('Turn Manager', () => {
             const action = { type: 'move', data: {} };
             const queue = [action];
             
-            const result = processNextAction(queue);
+            processNextAction(queue);
             
             expect(queue).toHaveLength(1);
         });

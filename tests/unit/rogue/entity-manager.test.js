@@ -14,7 +14,7 @@ import {
     isEntityAlive,
     damageEntity
 } from '../../../src/rogue/entity-manager.js';
-import { ENEMY_TYPES, ITEM_TYPES } from '../../../src/rogue/constants.js';
+import { ITEM_TYPES } from '../../../src/rogue/constants.js';
 
 describe('Entity Manager', () => {
     describe('createEnemy', () => {

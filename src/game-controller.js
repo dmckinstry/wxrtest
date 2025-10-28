@@ -4,7 +4,6 @@
  */
 
 import { 
-    TILE_SIZE,
     MOVEMENT_THRESHOLD,
     COMBAT_DETECTION_RADIUS,
     ENEMY_TYPES,
@@ -15,11 +14,8 @@ import {
     updatePlayerWorldPosition,
     updatePlayerPosition,
     damagePlayer,
-    addExperience,
-    incrementKills,
     setCombatMode,
-    updateAccumulatedMovement,
-    addGold
+    updateAccumulatedMovement
 } from './rogue/game-state.js';
 import { advanceTurn, checkTurnAdvancement } from './rogue/turn-manager.js';
 import { 
@@ -52,13 +48,11 @@ import {
     calculateMovementBudget,
     checkCollision
 } from './rogue/movement.js';
-import { createEnemy as createEnemyEntity, damageEntity, isEntityAlive } from './rogue/entity-manager.js';
+import { createEnemy as createEnemyEntity, isEntityAlive } from './rogue/entity-manager.js';
 import { executeAttack, processEnemyTurn, getCombatMessage } from './rogue/combat.js';
 import { 
     playFootstepSound,
     playCombatHitSound,
-    playEnemyDeathSound,
-    playLevelUpSound,
     createAmbientDrone
 } from './rogue/audio-generator.js';
 

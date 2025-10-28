@@ -1,7 +1,7 @@
 /**
  * Unit tests for render utilities
  */
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import {
     createHUDCanvas,
     getHPColor,
@@ -10,40 +10,6 @@ import {
     getFloorColor
 } from '../../../src/rogue/render-utils.js';
 import { PALETTE } from '../../../src/rogue/constants.js';
-
-// Mock THREE.js objects for testing
-const mockTHREE = {
-    BoxGeometry: class { constructor(...args) { this.args = args; } },
-    PlaneGeometry: class { constructor(...args) { this.args = args; } },
-    ConeGeometry: class { constructor(...args) { this.args = args; } },
-    SphereGeometry: class { constructor(...args) { this.args = args; } },
-    TetrahedronGeometry: class { constructor(...args) { this.args = args; } },
-    CapsuleGeometry: class { constructor(...args) { this.args = args; } },
-    RingGeometry: class { constructor(...args) { this.args = args; } },
-    MeshStandardMaterial: class { constructor(props) { this.props = props; } },
-    MeshBasicMaterial: class { constructor(props) { this.props = props; } },
-    Mesh: class { 
-        constructor(geometry, material) { 
-            this.geometry = geometry;
-            this.material = material;
-            this.position = { set: () => {}, x: 0, y: 0, z: 0 };
-            this.rotation = { x: 0 };
-            this.castShadow = false;
-            this.receiveShadow = false;
-            this.visible = true;
-        }
-    },
-    PointLight: class {
-        constructor(color, intensity, distance) {
-            this.color = color;
-            this.intensity = intensity;
-            this.distance = distance;
-            this.position = { set: () => {} };
-            this.castShadow = false;
-        }
-    },
-    DoubleSide: 2
-};
 
 describe('Render Utils', () => {
     describe('getFloorColor', () => {
