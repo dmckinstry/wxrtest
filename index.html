@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebXR Hello World</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+        }
+        #vr-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        #vr-button:hover {
+            background: #1565c0;
+        }
+        #vr-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>WebXR Hello World</h3>
+        <p>Click "Enter VR" to start the experience</p>
+    </div>
+    <button id="vr-button">Enter VR</button>
+
+    <!-- Include Three.js from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+
+        let camera, scene, renderer;
+        let controller1, controller2;
+        let textMesh;
+
+        init();
+        animate();
+
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x505050);
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(
+                70,
+                window.innerWidth / window.innerHeight,
+                0.01,
+                100
+            );
+            camera.position.set(0, 1.6, 3);
+
+            // Add ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            // Add directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 2, 3);
+            scene.add(directionalLight);
+
+            // Create "Hello World" text using simple 3D text
+            createHelloWorldText();
+
+            // Add a grid floor for reference
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // Create renderer with XR support
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Add VR Button
+            const vrButton = VRButton.createButton(renderer);
+            document.body.appendChild(vrButton);
+            
+            // Hide the custom button, use Three.js VRButton instead
+            document.getElementById('vr-button').style.display = 'none';
+
+            // Add controllers
+            controller1 = renderer.xr.getController(0);
+            scene.add(controller1);
+
+            controller2 = renderer.xr.getController(1);
+            scene.add(controller2);
+
+            // Add controller grips (visual representation)
+            const controllerModelFactory = new THREE.Object3D();
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, -1], 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5, 0, 0, 0], 3));
+
+            const material = new THREE.LineBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending });
+
+            controller1.add(new THREE.Line(geometry, material));
+            controller2.add(new THREE.Line(geometry, material));
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createHelloWorldText() {
+            // Create a simple 3D text alternative using shapes
+            // Since we're using CDN and want to keep it simple, we'll use 3D boxes arranged as text
+            
+            const group = new THREE.Group();
+            
+            // Create "HELLO WORLD" using simple 3D box letters
+            const boxMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x004400,
+                shininess: 100
+            });
+
+            // Create multiple boxes to spell out text (simplified)
+            // For a proper implementation, we'd load a font, but for "Hello World" this works
+            
+            // Alternative: Use a plane with text texture
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw text on canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = 'Bold 100px Arial';
+            ctx.fillStyle = '#00ff00';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('HELLO WORLD', canvas.width / 2, canvas.height / 2);
+            
+            // Create texture from canvas
+            const texture = new THREE.CanvasTexture(canvas);
+            
+            // Create plane with text
+            const geometry = new THREE.PlaneGeometry(5, 1.25);
+            const material = new THREE.MeshBasicMaterial({ 
+                map: texture, 
+                side: THREE.DoubleSide,
+                transparent: true
+            });
+            
+            textMesh = new THREE.Mesh(geometry, material);
+            textMesh.position.set(0, 1.6, 0);
+            
+            scene.add(textMesh);
+
+            // Add a rotating cube for fun
+            const cubeGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const cubeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff6600,
+                emissive: 0x441100
+            });
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(0, 1.6, -1.5);
+            cube.name = 'rotatingCube';
+            scene.add(cube);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            renderer.setAnimationLoop(render);
+        }
+
+        function render() {
+            // Rotate the text slightly for effect
+            if (textMesh) {
+                textMesh.rotation.y = Math.sin(Date.now() * 0.0005) * 0.2;
+            }
+
+            // Rotate the cube
+            const cube = scene.getObjectByName('rotatingCube');
+            if (cube) {
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

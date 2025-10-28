@@ -1,0 +1,21 @@
+{
+  "name": "wxrtest",
+  "version": "1.0.0",
+  "description": "WebXR Hello World application for Meta Quest",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server -p 8080 -c-1",
+    "start": "npm run dev"
+  },
+  "keywords": [
+    "webxr",
+    "vr",
+    "meta-quest",
+    "three.js"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
