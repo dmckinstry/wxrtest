@@ -6,6 +6,43 @@
 import { PALETTE, MATERIAL_PROPS, TILE_SIZE } from './constants.js';
 
 /**
+ * Add white outline to a mesh
+ * @param {object} THREE - Three.js library
+ * @param {object} mesh - The mesh to add outline to
+ * @returns {object} Group containing mesh and outline
+ */
+function addWhiteOutline(THREE, mesh) {
+    const group = new THREE.Group();
+    group.add(mesh);
+    
+    // Create edges geometry from the mesh
+    const edges = new THREE.EdgesGeometry(mesh.geometry);
+    const lineMaterial = new THREE.LineBasicMaterial({ 
+        color: 0xffffff, 
+        linewidth: 2 
+    });
+    const lineSegments = new THREE.LineSegments(edges, lineMaterial);
+    
+    // Position the outline at the same place as the mesh
+    lineSegments.position.copy(mesh.position);
+    lineSegments.rotation.copy(mesh.rotation);
+    lineSegments.scale.copy(mesh.scale);
+    
+    // Reset mesh position since it's now in a group
+    mesh.position.set(0, 0, 0);
+    mesh.rotation.set(0, 0, 0);
+    mesh.scale.set(1, 1, 1);
+    
+    group.add(lineSegments);
+    
+    // Copy shadow properties to group
+    group.castShadow = mesh.castShadow;
+    group.receiveShadow = mesh.receiveShadow;
+    
+    return group;
+}
+
+/**
  * Get floor color based on visibility state
  * @param {string} visibilityState - 'visible', 'explored', or 'hidden'
  * @returns {number} Color hex value
@@ -20,11 +57,11 @@ export function getFloorColor(visibilityState) {
 }
 
 /**
- * Create a wall mesh
+ * Create a wall mesh with white outline
  * @param {object} THREE - Three.js library
  * @param {number} x - World X position
  * @param {number} z - World Z position
- * @returns {object} Three.js Mesh
+ * @returns {object} Three.js Group containing mesh and outline
  */
 export function createWall(THREE, x, z) {
     const geometry = new THREE.BoxGeometry(TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -36,16 +73,17 @@ export function createWall(THREE, x, z) {
     mesh.position.set(x, TILE_SIZE / 2, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    return mesh;
+    
+    return addWhiteOutline(THREE, mesh);
 }
 
 /**
- * Create a floor mesh
+ * Create a floor mesh with white outline
  * @param {object} THREE - Three.js library
  * @param {number} x - World X position
  * @param {number} z - World Z position
  * @param {string} visibilityState - 'visible', 'explored', or 'hidden'
- * @returns {object} Three.js Mesh
+ * @returns {object} Three.js Group containing mesh and outline
  */
 export function createFloor(THREE, x, z, visibilityState = 'visible') {
     const geometry = new THREE.PlaneGeometry(TILE_SIZE, TILE_SIZE);
@@ -60,15 +98,16 @@ export function createFloor(THREE, x, z, visibilityState = 'visible') {
     mesh.position.set(x, 0, z);
     mesh.rotation.x = -Math.PI / 2;
     mesh.receiveShadow = true;
-    return mesh;
+    
+    return addWhiteOutline(THREE, mesh);
 }
 
 /**
- * Create stairs down mesh
+ * Create stairs down mesh with white outline
  * @param {object} THREE - Three.js library
  * @param {number} x - World X position
  * @param {number} z - World Z position
- * @returns {object} Three.js Mesh
+ * @returns {object} Three.js Group containing mesh and outline
  */
 export function createStairsDown(THREE, x, z) {
     const geometry = new THREE.BoxGeometry(TILE_SIZE * 0.8, 0.2, TILE_SIZE * 0.8);
@@ -80,7 +119,8 @@ export function createStairsDown(THREE, x, z) {
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, 0.1, z);
-    return mesh;
+    
+    return addWhiteOutline(THREE, mesh);
 }
 
 /**
@@ -100,12 +140,16 @@ export function createRoomLight(THREE, x, z, visible = false) {
 
 /**
  * Update floor color based on visibility state
- * @param {object} mesh - Three.js Mesh
+ * @param {object} meshOrGroup - Three.js Mesh or Group
  * @param {string} visibilityState - 'visible', 'explored', or 'hidden'
  */
-export function updateFloorVisibility(mesh, visibilityState) {
+export function updateFloorVisibility(meshOrGroup, visibilityState) {
     const color = getFloorColor(visibilityState);
-    mesh.material.color.setHex(color);
+    // If it's a group (with outline), update the first child (the mesh)
+    const mesh = meshOrGroup.isGroup ? meshOrGroup.children[0] : meshOrGroup;
+    if (mesh && mesh.material) {
+        mesh.material.color.setHex(color);
+    }
 }
 
 /**
@@ -132,12 +176,12 @@ export function createMovementIndicator(THREE, radius, maxRadius) {
 }
 
 /**
- * Create enemy mesh based on type
+ * Create enemy mesh based on type with white outline
  * @param {object} THREE - Three.js library
  * @param {object} enemyConfig - Enemy configuration from constants
  * @param {number} x - World X position
  * @param {number} z - World Z position
- * @returns {object} Three.js Mesh
+ * @returns {object} Three.js Group containing mesh and outline
  */
 export function createEnemy(THREE, enemyConfig, x, z) {
     let geometry;
@@ -167,13 +211,14 @@ export function createEnemy(THREE, enemyConfig, x, z) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, 1, z);
     mesh.castShadow = true;
-    return mesh;
+    
+    return addWhiteOutline(THREE, mesh);
 }
 
 /**
- * Create player mesh
+ * Create player mesh with white outline
  * @param {object} THREE - Three.js library
- * @returns {object} Three.js Mesh
+ * @returns {object} Three.js Group containing mesh and outline
  */
 export function createPlayer(THREE) {
     const geometry = new THREE.CapsuleGeometry(0.3, 1.2, 8, 16);
@@ -184,7 +229,8 @@ export function createPlayer(THREE) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.y = 0.9;
     mesh.castShadow = true;
-    return mesh;
+    
+    return addWhiteOutline(THREE, mesh);
 }
 
 /**
