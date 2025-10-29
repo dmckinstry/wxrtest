@@ -8,18 +8,18 @@ export const VISIBILITY_RADIUS = 5; // 5 meters visibility radius
 export const MOVEMENT_THRESHOLD = 2; // 2 meters to advance turn
 export const COMBAT_DETECTION_RADIUS = 10; // 10 meters for auto-combat mode
 
-// Color palette for low-poly flat-shaded aesthetics
+// Color palette for low-poly flat-shaded aesthetics - vibrant and colorful
 export const PALETTE = {
-    // Environment
-    FLOOR: 0x3a3a3a,
-    WALL: 0x5a5a5a,
-    DOOR: 0x8b4513,
+    // Environment - bright and colorful
+    FLOOR: 0x8B7355,      // Sandy brown floor
+    WALL: 0x6B8E23,       // Olive green walls
+    DOOR: 0xD2691E,       // Chocolate brown door
     STAIRS_DOWN: 0x00ff00,
     STAIRS_UP: 0x00ffff,
     
     // Visibility
     VISIBLE: 0xffffff,
-    EXPLORED: 0x404040,
+    EXPLORED: 0x5C4033,   // Darker brown for explored areas (still visible)
     HIDDEN: 0x000000,
     
     // UI
@@ -33,20 +33,20 @@ export const PALETTE = {
     HUNGER_STARVING: 0xff0000,
     
     // Entities
-    PLAYER: 0x0080ff,
+    PLAYER: 0x4169E1,     // Royal blue player
     
-    // Enemies
-    GOBLIN: 0xff4444,
-    SKELETON: 0xdddddd,
-    SLIME: 0x00ff88,
-    DRAGON: 0xff0000,
+    // Enemies - bright and distinct colors
+    GOBLIN: 0xFF6347,     // Tomato red
+    SKELETON: 0xF0E68C,   // Khaki/bone yellow
+    SLIME: 0x32CD32,      // Lime green
+    DRAGON: 0xFF4500,     // Orange red
     
     // Items
-    POTION: 0xff00ff,
-    SCROLL: 0xffff00,
-    SWORD: 0xffd700,
-    RING: 0xff8800,
-    GOLD: 0xffdd00
+    POTION: 0xFF00FF,     // Magenta
+    SCROLL: 0xFFD700,     // Gold
+    SWORD: 0xC0C0C0,      // Silver
+    RING: 0xFF8C00,       // Dark orange
+    GOLD: 0xFFD700        // Gold
 };
 
 // Enemy type configurations
