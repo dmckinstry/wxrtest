@@ -1,13 +1,14 @@
 # wxrtest
 
-A 3D Rogue-like Dungeon Crawler with Smooth VR Locomotion for Meta Quest and other WebXR-enabled devices.
+A 3D Rogue-like Dungeon Crawler with Smooth VR Locomotion for Meta Quest and Desktop browsers.
 
 ## Features
 
 ### Core Gameplay
 - **Procedural Dungeon Generation**: Seeded random generation with 6-9 rooms per level
 - **Turn-Based Combat**: Classic rogue-like tactical combat with d20 mechanics
-- **Smooth VR Locomotion**: Controller joystick movement with distance-based turn advancement
+- **Smooth Locomotion**: VR controller joystick or keyboard movement with distance-based turn advancement
+- **Desktop & VR Support**: Play in VR with Meta Quest or on desktop with keyboard and mouse
 - **Fog of War**: Radius-based visibility with exploration memory
 - **Progressive Difficulty**: Enemy count and strength scale with dungeon depth
 - **Permadeath**: Classic rogue-like permadeath with detailed statistics
@@ -41,14 +42,14 @@ A 3D Rogue-like Dungeon Crawler with Smooth VR Locomotion for Meta Quest and oth
 
 ## Prerequisites
 
-- A WebXR-compatible browser (e.g., Chrome, Edge, Firefox Reality)
+- **For Desktop**: Any modern web browser (Chrome, Firefox, Edge, Safari)
+- **For VR**: A WebXR-compatible browser (Meta Quest Browser, Chrome, Edge, Firefox Reality)
 - For local testing: Node.js and npm (optional, for development server)
-- For Meta Quest: Meta Quest Browser or other WebXR-enabled browser
 
 ## Quick Start
 
 ### Option 1: Direct File Opening
-Simply open `index.html` in a WebXR-compatible browser. Note that for full WebXR functionality, you'll need to serve it over HTTPS or localhost.
+Simply open `index.html` in a modern web browser. For desktop mode, click on the canvas to enable mouse look and use WASD keys to move. For full WebXR/VR functionality, you'll need to serve it over HTTPS or localhost.
 
 ### Option 2: Using Development Server (Recommended)
 
@@ -63,11 +64,22 @@ npm start
 ```
 
 3. Open your browser to `http://localhost:8080`
+   - **Desktop Mode**: Click on the canvas to lock the pointer, then use WASD/Arrow keys to move and mouse to look around
+   - **VR Mode**: Click "Enter VR" button if you have a WebXR-compatible headset
 
 ### Option 3: Deploy to a Web Server
-Upload the files to any web server with HTTPS enabled, then access it from your Meta Quest browser.
+Upload the files to any web server with HTTPS enabled, then access it from your desktop browser or Meta Quest browser.
 
-## Testing on Meta Quest
+## Playing on Desktop
+
+1. Open the application in your browser
+2. Click anywhere on the canvas to lock the pointer (enables mouse look)
+3. Use **WASD** or **Arrow keys** to move through the dungeon
+4. Move your **mouse** to look around
+5. Press **ESC** to unlock the pointer and access browser controls
+6. Explore, fight enemies, and try to descend as deep as possible!
+
+## Playing on Meta Quest
 
 1. Make sure your application is served over HTTPS (required for WebXR)
 2. Open the Meta Quest Browser on your headset
@@ -78,6 +90,15 @@ Upload the files to any web server with HTTPS enabled, then access it from your 
 
 ## Controls
 
+### Desktop Mode
+- **WASD** or **Arrow Keys**: Move character (forward, back, strafe left/right)
+- **Mouse**: Look around (requires pointer lock - click canvas to enable)
+- **ESC**: Release pointer lock
+- **Movement Threshold**: Moving 2 meters advances one turn
+- **Combat Mode**: Automatically activates when enemies are within 10 meters
+- **HUD**: Displays HP, Hunger, Level, and Turn count
+
+### VR Mode (Meta Quest)
 - **Left Controller Joystick**: Move character (smooth locomotion)
 - **Movement Threshold**: Moving 2 meters advances one turn
 - **Combat Mode**: Automatically activates when enemies are within 10 meters
@@ -166,6 +187,14 @@ The test suite covers:
 
 ## Browser Compatibility
 
+### Desktop Mode
+- Chrome/Chromium (recommended)
+- Firefox
+- Edge
+- Safari
+- Any modern browser with WebGL support
+
+### VR Mode
 - Meta Quest Browser (recommended for Meta Quest)
 - Chrome/Edge with WebXR support
 - Firefox Reality
@@ -173,10 +202,13 @@ The test suite covers:
 
 ## Notes
 
-- WebXR requires HTTPS in production (localhost works for development)
+- **Desktop Mode**: Works in any modern browser with WebGL support
+- **VR Mode**: Requires HTTPS in production (localhost works for development)
 - The application automatically detects WebXR support and displays appropriate UI
-- Controllers will be tracked automatically when in VR mode
+- In desktop mode, click the canvas to enable pointer lock for mouse look controls
+- In VR mode, controllers will be tracked automatically when in VR mode
 - Game uses seeded random generation for consistent dungeon layouts per seed
+- Both VR and desktop modes share the same core gameplay mechanics
 
 ## License
 

@@ -1,10 +1,32 @@
 /**
- * VR Movement System
- * Handles smooth locomotion and combat mode detection
+ * VR and Desktop Movement System
+ * Handles smooth locomotion, keyboard controls, and combat mode detection
  */
 
 import { MOVEMENT_THRESHOLD, COMBAT_DETECTION_RADIUS } from './constants.js';
 import { distance } from './grid-utils.js';
+
+/**
+ * Read keyboard input axes
+ * @param {object} keyStates - Object mapping key names to boolean states
+ * @returns {{x: number, y: number}} Keyboard axes values (-1 to 1)
+ */
+export function readKeyboardAxes(keyStates) {
+    if (!keyStates || typeof keyStates !== 'object') {
+        return { x: 0, y: 0 };
+    }
+    
+    let x = 0;
+    let y = 0;
+    
+    // WASD and arrow keys for movement
+    if (keyStates['KeyW'] || keyStates['ArrowUp']) y -= 1;
+    if (keyStates['KeyS'] || keyStates['ArrowDown']) y += 1;
+    if (keyStates['KeyA'] || keyStates['ArrowLeft']) x -= 1;
+    if (keyStates['KeyD'] || keyStates['ArrowRight']) x += 1;
+    
+    return { x, y };
+}
 
 /**
  * Read controller joystick axes
@@ -97,4 +119,29 @@ export function calculateMovementBudget(accumulated, threshold = MOVEMENT_THRESH
 export function checkCollision(newPosition, grid, worldToGrid, isWalkable) {
     const gridPos = worldToGrid(newPosition.x, newPosition.z);
     return isWalkable(grid, gridPos.x, gridPos.y);
+}
+
+/**
+ * Calculate camera rotation from mouse movement
+ * @param {number} deltaX - Mouse delta X
+ * @param {number} deltaY - Mouse delta Y
+ * @param {number} sensitivity - Mouse sensitivity
+ * @returns {{yaw: number, pitch: number}} Camera rotation deltas in radians
+ */
+export function calculateCameraRotation(deltaX, deltaY, sensitivity = 0.002) {
+    return {
+        yaw: -deltaX * sensitivity,
+        pitch: -deltaY * sensitivity
+    };
+}
+
+/**
+ * Clamp pitch rotation to prevent over-rotation
+ * @param {number} pitch - Current pitch in radians
+ * @param {number} min - Minimum pitch (default -PI/2)
+ * @param {number} max - Maximum pitch (default PI/2)
+ * @returns {number} Clamped pitch value
+ */
+export function clampPitch(pitch, min = -Math.PI / 2, max = Math.PI / 2) {
+    return Math.max(min, Math.min(max, pitch));
 }
