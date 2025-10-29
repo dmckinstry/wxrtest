@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebXR Hello World</title>
+    <title>3D Rogue-like Dungeon Crawler</title>
     <style>
         body {
             margin: 0;
@@ -68,6 +68,14 @@
         let camera, scene, renderer;
         let controller1, controller2;
         let gameController;
+        
+        // Keyboard state tracker for desktop mode
+        const keyboardState = {};
+        
+        // Mouse state for camera control
+        let yaw = 0;
+        let pitch = 0;
+        let isPointerLocked = false;
 
         init();
         animate();
@@ -122,18 +130,66 @@
             controller1.add(new THREE.Line(geometry, material));
             controller2.add(new THREE.Line(geometry, material));
 
-            // Initialize game
-            gameController = createGame(THREE, scene, camera, renderer);
+            // Initialize game with keyboard state
+            gameController = createGame(THREE, scene, camera, renderer, null, keyboardState);
             
             // Update info text
-            document.getElementById('info').innerHTML = `
-                <h3>3D Rogue-like Dungeon Crawler</h3>
-                <p>Use left controller joystick to move</p>
-                <p>Explore the dungeon and defeat enemies!</p>
-            `;
+            updateInfoText();
 
             // Handle window resize
             window.addEventListener('resize', onWindowResize);
+            
+            // Setup keyboard controls for desktop mode
+            setupKeyboardControls();
+            
+            // Setup mouse controls for desktop mode
+            setupMouseControls();
+        }
+        
+        function updateInfoText() {
+            document.getElementById('info').innerHTML = `
+                <h3>3D Rogue-like Dungeon Crawler</h3>
+                <p><strong>VR Mode:</strong> Use left controller joystick to move</p>
+                <p><strong>Desktop Mode:</strong> Click to lock pointer, WASD/Arrow keys to move, mouse to look</p>
+                <p>Explore the dungeon and defeat enemies!</p>
+            `;
+        }
+        
+        function setupKeyboardControls() {
+            window.addEventListener('keydown', (event) => {
+                keyboardState[event.code] = true;
+            });
+            
+            window.addEventListener('keyup', (event) => {
+                keyboardState[event.code] = false;
+            });
+        }
+        
+        function setupMouseControls() {
+            // Request pointer lock on canvas click
+            renderer.domElement.addEventListener('click', () => {
+                if (!renderer.xr.isPresenting) {
+                    renderer.domElement.requestPointerLock();
+                }
+            });
+            
+            // Handle pointer lock state changes
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === renderer.domElement;
+            });
+            
+            // Handle mouse movement for camera rotation
+            document.addEventListener('mousemove', (event) => {
+                if (isPointerLocked && !renderer.xr.isPresenting) {
+                    const sensitivity = 0.002;
+                    yaw -= event.movementX * sensitivity;
+                    pitch -= event.movementY * sensitivity;
+                    
+                    // Clamp pitch to prevent over-rotation
+                    const maxPitch = Math.PI / 2;
+                    pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+                }
+            });
         }
 
         function onWindowResize() {
@@ -147,6 +203,13 @@
         }
 
         function render() {
+            // Update camera rotation in desktop mode (not in VR)
+            if (!renderer.xr.isPresenting) {
+                camera.rotation.order = 'YXZ';
+                camera.rotation.y = yaw;
+                camera.rotation.x = pitch;
+            }
+            
             // Update game
             if (gameController) {
                 gameController.update();

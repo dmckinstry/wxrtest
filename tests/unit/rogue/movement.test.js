@@ -4,14 +4,81 @@
 import { describe, it, expect } from '@jest/globals';
 import {
     readJoystickAxes,
+    readKeyboardAxes,
     calculateMovementDelta,
     calculateMovementDistance,
     detectCombatMode,
     calculateMovementBudget,
-    checkCollision
+    checkCollision,
+    calculateCameraRotation,
+    clampPitch
 } from '../../../src/rogue/movement.js';
 
 describe('Movement System', () => {
+    describe('readKeyboardAxes', () => {
+        it('should return zero axes for null keyStates', () => {
+            // Arrange & Act
+            const result = readKeyboardAxes(null);
+            
+            // Assert
+            expect(result).toEqual({ x: 0, y: 0 });
+        });
+
+        it('should return zero axes for empty keyStates', () => {
+            const result = readKeyboardAxes({});
+            
+            expect(result).toEqual({ x: 0, y: 0 });
+        });
+
+        it('should read W key for forward movement', () => {
+            const keyStates = { 'KeyW': true };
+            
+            const result = readKeyboardAxes(keyStates);
+            
+            expect(result).toEqual({ x: 0, y: -1 });
+        });
+
+        it('should read S key for backward movement', () => {
+            const keyStates = { 'KeyS': true };
+            
+            const result = readKeyboardAxes(keyStates);
+            
+            expect(result).toEqual({ x: 0, y: 1 });
+        });
+
+        it('should read A key for left movement', () => {
+            const keyStates = { 'KeyA': true };
+            
+            const result = readKeyboardAxes(keyStates);
+            
+            expect(result).toEqual({ x: -1, y: 0 });
+        });
+
+        it('should read D key for right movement', () => {
+            const keyStates = { 'KeyD': true };
+            
+            const result = readKeyboardAxes(keyStates);
+            
+            expect(result).toEqual({ x: 1, y: 0 });
+        });
+
+        it('should read arrow keys', () => {
+            const keyStates = { 'ArrowUp': true, 'ArrowRight': true };
+            
+            const result = readKeyboardAxes(keyStates);
+            
+            expect(result).toEqual({ x: 1, y: -1 });
+        });
+
+        it('should combine multiple keys', () => {
+            const keyStates = { 'KeyW': true, 'KeyD': true };
+            
+            const result = readKeyboardAxes(keyStates);
+            
+            expect(result).toEqual({ x: 1, y: -1 });
+        });
+    });
+
     describe('readJoystickAxes', () => {
         it('should return zero axes for null controller', () => {
             // Arrange & Act
@@ -194,6 +261,75 @@ describe('Movement System', () => {
             const result = checkCollision(newPosition, grid, worldToGrid, isWalkable);
             
             expect(result).toBe(false);
+        });
+    });
+
+    describe('calculateCameraRotation', () => {
+        it('should calculate yaw and pitch from mouse delta', () => {
+            // Arrange
+            const deltaX = 100;
+            const deltaY = 50;
+            
+            // Act
+            const result = calculateCameraRotation(deltaX, deltaY);
+            
+            // Assert
+            expect(result.yaw).toBeCloseTo(-0.2);
+            expect(result.pitch).toBeCloseTo(-0.1);
+        });
+
+        it('should scale by sensitivity', () => {
+            const deltaX = 100;
+            const deltaY = 50;
+            
+            const result = calculateCameraRotation(deltaX, deltaY, 0.001);
+            
+            expect(result.yaw).toBeCloseTo(-0.1);
+            expect(result.pitch).toBeCloseTo(-0.05);
+        });
+
+        it('should return zero for zero mouse movement', () => {
+            const result = calculateCameraRotation(0, 0);
+            
+            expect(Math.abs(result.yaw)).toBe(0);
+            expect(Math.abs(result.pitch)).toBe(0);
+        });
+    });
+
+    describe('clampPitch', () => {
+        it('should clamp pitch to maximum', () => {
+            // Arrange
+            const pitch = Math.PI;
+            
+            // Act
+            const result = clampPitch(pitch);
+            
+            // Assert
+            expect(result).toBeCloseTo(Math.PI / 2);
+        });
+
+        it('should clamp pitch to minimum', () => {
+            const pitch = -Math.PI;
+            
+            const result = clampPitch(pitch);
+            
+            expect(result).toBeCloseTo(-Math.PI / 2);
+        });
+
+        it('should not clamp pitch within range', () => {
+            const pitch = Math.PI / 4;
+            
+            const result = clampPitch(pitch);
+            
+            expect(result).toBeCloseTo(Math.PI / 4);
+        });
+
+        it('should respect custom min/max', () => {
+            const pitch = -1.5;
+            
+            const result = clampPitch(pitch, -1.0, 1.0);
+            
+            expect(result).toBe(-1.0);
         });
     });
 });

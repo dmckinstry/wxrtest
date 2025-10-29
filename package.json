@@ -1,7 +1,7 @@
 {
   "name": "wxrtest",
   "version": "1.0.0",
-  "description": "WebXR Hello World application for Meta Quest",
+  "description": "3D Rogue-like Dungeon Crawler for Meta Quest and Desktop browsers",
   "main": "index.html",
   "type": "module",
   "scripts": {

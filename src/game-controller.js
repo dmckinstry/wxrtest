@@ -42,11 +42,14 @@ import {
 } from './rogue/render-utils.js';
 import {
     readJoystickAxes,
+    readKeyboardAxes,
     calculateMovementDelta,
     calculateMovementDistance,
     detectCombatMode,
     calculateMovementBudget,
-    checkCollision
+    checkCollision,
+    calculateCameraRotation,
+    clampPitch
 } from './rogue/movement.js';
 import { createEnemy as createEnemyEntity, isEntityAlive } from './rogue/entity-manager.js';
 import { executeAttack, processEnemyTurn, getCombatMessage } from './rogue/combat.js';
@@ -63,9 +66,10 @@ import {
  * @param {object} camera - Three.js camera
  * @param {object} renderer - Three.js renderer with XR enabled
  * @param {number} customSeed - Optional custom seed for reproducible dungeons
+ * @param {object} keyboardState - Optional keyboard state tracker for desktop mode
  * @returns {object} Game controller
  */
-export function createGame(THREE, scene, camera, renderer, customSeed = null) {
+export function createGame(THREE, scene, camera, renderer, customSeed = null, keyboardState = null) {
     // Initialize game state
     const seed = customSeed !== null ? customSeed : Date.now();
     let gameState = createInitialState(seed);
@@ -205,9 +209,17 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null) {
             return; // Stop updating if game over
         }
         
-        // Read controller input
+        // Read input from VR controller or keyboard
         const controller = renderer.xr.getController(0);
-        const axes = readJoystickAxes(controller);
+        const vrAxes = readJoystickAxes(controller);
+        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0 };
+        
+        // Combine VR and keyboard input (prioritize VR when both active)
+        const axes = {
+            x: vrAxes.x !== 0 ? vrAxes.x : kbAxes.x,
+            y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
+        };
+        
         const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0);
         const moveDistance = calculateMovementDistance(moveDelta);
         
