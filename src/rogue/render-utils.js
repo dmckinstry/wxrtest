@@ -13,31 +13,39 @@ import { PALETTE, MATERIAL_PROPS, TILE_SIZE } from './constants.js';
  */
 function addWhiteOutline(THREE, mesh) {
     const group = new THREE.Group();
+    
+    // Store original position/rotation/scale
+    const originalPos = mesh.position.clone();
+    const originalRot = mesh.rotation.clone();
+    const originalScale = mesh.scale.clone();
+    
+    // Reset mesh transform and add to group
+    mesh.position.set(0, 0, 0);
+    mesh.rotation.set(0, 0, 0);
+    mesh.scale.set(1, 1, 1);
     group.add(mesh);
     
     // Create edges geometry from the mesh
     const edges = new THREE.EdgesGeometry(mesh.geometry);
     const lineMaterial = new THREE.LineBasicMaterial({ 
-        color: 0xffffff, 
-        linewidth: 2 
+        color: 0xffffff
+        // Note: linewidth is not well-supported across renderers
+        // Default thickness is fine for our use case
     });
     const lineSegments = new THREE.LineSegments(edges, lineMaterial);
-    
-    // Position the outline at the same place as the mesh
-    lineSegments.position.copy(mesh.position);
-    lineSegments.rotation.copy(mesh.rotation);
-    lineSegments.scale.copy(mesh.scale);
-    
-    // Reset mesh position since it's now in a group
-    mesh.position.set(0, 0, 0);
-    mesh.rotation.set(0, 0, 0);
-    mesh.scale.set(1, 1, 1);
-    
     group.add(lineSegments);
+    
+    // Apply original transforms to the group
+    group.position.copy(originalPos);
+    group.rotation.copy(originalRot);
+    group.scale.copy(originalScale);
     
     // Copy shadow properties to group
     group.castShadow = mesh.castShadow;
     group.receiveShadow = mesh.receiveShadow;
+    
+    // Store mesh reference in userData for reliable access
+    group.userData.mesh = mesh;
     
     return group;
 }
@@ -145,8 +153,18 @@ export function createRoomLight(THREE, x, z, visible = false) {
  */
 export function updateFloorVisibility(meshOrGroup, visibilityState) {
     const color = getFloorColor(visibilityState);
-    // If it's a group (with outline), update the first child (the mesh)
-    const mesh = meshOrGroup.isGroup ? meshOrGroup.children[0] : meshOrGroup;
+    
+    // Handle both groups (with outline) and plain meshes for backward compatibility
+    let mesh;
+    if (meshOrGroup.isGroup && meshOrGroup.userData.mesh) {
+        mesh = meshOrGroup.userData.mesh;
+    } else if (meshOrGroup.isGroup) {
+        // Fallback: find first mesh in group
+        mesh = meshOrGroup.children.find(child => child.isMesh);
+    } else {
+        mesh = meshOrGroup;
+    }
+    
     if (mesh && mesh.material) {
         mesh.material.color.setHex(color);
     }
