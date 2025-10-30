@@ -149,7 +149,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     // Position camera at player's starting location
     camera.position.set(
         gameState.player.worldPosition.x,
-        gameState.player.worldPosition.y,
+        1.6, // Eye height
         gameState.player.worldPosition.z
     );
     
