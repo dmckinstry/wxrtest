@@ -197,6 +197,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     const combatLog = [];
     const actionLog = []; // For display in UI
     const MAX_LOG_MESSAGES = 10;
+    let gameOverLogged = false; // Track if game over has been logged
     
     /**
      * Add a message to the action log
@@ -426,9 +427,10 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         lastTime = currentTime;
         
         if (gameState.gameOver) {
-            // Log game over message once
-            if (actionLog.length === 0 || !actionLog[actionLog.length - 1].includes('GAME OVER')) {
+            // Log game over message once using flag
+            if (!gameOverLogged) {
                 addLogMessage(`💀 GAME OVER: ${gameState.deathMessage}`);
+                gameOverLogged = true;
             }
             return; // Stop updating if game over
         }
