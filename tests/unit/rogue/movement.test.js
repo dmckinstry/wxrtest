@@ -130,8 +130,10 @@ describe('Movement System', () => {
             
             const result = calculateMovementDelta(axes, deltaTime, 2.0, 0); // yaw = 0
             
-            expect(result.dx).toBeCloseTo(1.0);
-            expect(result.dz).toBeCloseTo(-0.5); // forward is negative
+            // x: 1.0 (right), y: 0.5 (backward)
+            // strafe = 1.0, forward = -0.5 (negative forward = backward)
+            expect(result.dx).toBeCloseTo(1.0); // right strafe
+            expect(result.dz).toBeCloseTo(0.5); // backward (positive Z)
         });
 
         it('should scale by speed', () => {

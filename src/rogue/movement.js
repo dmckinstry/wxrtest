@@ -64,14 +64,17 @@ export function calculateMovementDelta(axes, deltaTime, speed = 2.0, yaw = 0) {
     const y = Math.abs(axes.y) > deadzone ? axes.y : 0;
     
     // Calculate movement relative to current rotation
-    // In Three.js, positive Y rotation is counter-clockwise (left)
-    // We want: forward (y=-1) to move in the direction we're facing
+    // In Three.js, camera faces -Z at yaw=0, and yaw rotates counter-clockwise
+    // At yaw=0: forward direction is (0, -1) in (dx, dz)
+    // At yaw=π/2: forward direction is (-1, 0) in (dx, dz)
     const forward = -y * speed * deltaTime;
     const strafe = x * speed * deltaTime;
     
     // Apply rotation transformation
-    const dx = strafe * Math.cos(yaw) - forward * Math.sin(yaw);
-    const dz = strafe * Math.sin(yaw) + forward * Math.cos(yaw);
+    // Forward direction: (-sin(yaw), -cos(yaw))
+    // Right direction (strafe): (cos(yaw), -sin(yaw))
+    const dx = -forward * Math.sin(yaw) + strafe * Math.cos(yaw);
+    const dz = -forward * Math.cos(yaw) - strafe * Math.sin(yaw);
     
     return { dx, dz };
 }
