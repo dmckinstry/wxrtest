@@ -19,6 +19,22 @@
             padding: 10px;
             border-radius: 5px;
             z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+            min-width: 300px;
+            font-size: 14px;
+        }
+        #info h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        #info .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #info .log-entry:last-child {
+            border-bottom: none;
         }
         #vr-button {
             position: absolute;
@@ -45,8 +61,10 @@
 </head>
 <body>
     <div id="info">
-        <h3>3D Rogue-like Dungeon Crawler</h3>
-        <p>Initializing game...</p>
+        <h3>Action Log</h3>
+        <div id="log-messages">
+            <div class="log-entry">Initializing game...</div>
+        </div>
     </div>
     <button id="vr-button">Enter VR</button>
 
@@ -76,6 +94,9 @@
         let yaw = 0;
         let pitch = 0;
         let isPointerLocked = false;
+        
+        // Rotation speed for keyboard (radians per second)
+        const keyboardRotationSpeed = Math.PI; // 180 degrees per second
 
         init();
         animate();
@@ -94,9 +115,14 @@
             );
             camera.position.set(0, 1.6, 3);
 
-            // Add ambient light
-            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            // Add ambient light - increased for better visibility
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
+            
+            // Add directional light for better depth perception
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
 
             // Create renderer with XR support
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -147,12 +173,22 @@
         }
         
         function updateInfoText() {
-            document.getElementById('info').innerHTML = `
-                <h3>3D Rogue-like Dungeon Crawler</h3>
-                <p><strong>VR Mode:</strong> Use left controller joystick to move</p>
-                <p><strong>Desktop Mode:</strong> Click to lock pointer, WASD/Arrow keys to move, mouse to look</p>
-                <p>Explore the dungeon and defeat enemies!</p>
-            `;
+            if (!gameController) return;
+            
+            const actionLog = gameController.getActionLog();
+            const logContainer = document.getElementById('log-messages');
+            
+            if (logContainer) {
+                logContainer.innerHTML = actionLog
+                    .map(msg => `<div class="log-entry">${msg}</div>`)
+                    .join('');
+                
+                // Auto-scroll to bottom
+                const infoDiv = document.getElementById('info');
+                if (infoDiv) {
+                    infoDiv.scrollTop = infoDiv.scrollHeight;
+                }
+            }
         }
         
         function setupKeyboardControls() {
@@ -188,6 +224,11 @@
                     // Clamp pitch to prevent over-rotation
                     const maxPitch = Math.PI / 2;
                     pitch = Math.max(-maxPitch, Math.min(maxPitch, pitch));
+                    
+                    // Sync rotation with game state
+                    if (gameController) {
+                        gameController.setRotation(yaw);
+                    }
                 }
             });
         }
@@ -201,18 +242,38 @@
         function animate() {
             renderer.setAnimationLoop(render);
         }
+        
+        let lastFrameTime = performance.now();
 
         function render() {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastFrameTime) / 1000;
+            lastFrameTime = currentTime;
+            
             // Update camera rotation in desktop mode (not in VR)
             if (!renderer.xr.isPresenting) {
+                // Handle keyboard rotation (arrow keys)
+                if (keyboardState['ArrowLeft']) {
+                    yaw += keyboardRotationSpeed * deltaTime;
+                }
+                if (keyboardState['ArrowRight']) {
+                    yaw -= keyboardRotationSpeed * deltaTime;
+                }
+                
                 camera.rotation.order = 'YXZ';
                 camera.rotation.y = yaw;
                 camera.rotation.x = pitch;
+                
+                // Sync game state rotation with current yaw (yaw is source of truth)
+                if (gameController) {
+                    gameController.setRotation(yaw);
+                }
             }
             
             // Update game
             if (gameController) {
                 gameController.update();
+                updateInfoText(); // Update action log display
             }
 
             renderer.render(scene, camera);

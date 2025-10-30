@@ -19,11 +19,15 @@ export function readKeyboardAxes(keyStates) {
     let x = 0;
     let y = 0;
     
-    // WASD and arrow keys for movement
-    if (keyStates['KeyW'] || keyStates['ArrowUp']) y -= 1;
-    if (keyStates['KeyS'] || keyStates['ArrowDown']) y += 1;
-    if (keyStates['KeyA'] || keyStates['ArrowLeft']) x -= 1;
-    if (keyStates['KeyD'] || keyStates['ArrowRight']) x += 1;
+    // WASD for movement (strafe and forward/back)
+    if (keyStates['KeyW']) y -= 1;
+    if (keyStates['KeyS']) y += 1;
+    if (keyStates['KeyA']) x -= 1;
+    if (keyStates['KeyD']) x += 1;
+    
+    // Arrow keys: Up/Down for forward/back (Left/Right handled in index.html for rotation)
+    if (keyStates['ArrowUp']) y -= 1;
+    if (keyStates['ArrowDown']) y += 1;
     
     return { x, y };
 }
@@ -50,18 +54,29 @@ export function readJoystickAxes(controller) {
  * @param {object} axes - Joystick axes {x, y}
  * @param {number} deltaTime - Time delta in seconds
  * @param {number} speed - Movement speed (meters per second)
+ * @param {number} yaw - Current camera/player yaw rotation in radians (optional)
  * @returns {{dx: number, dz: number}} Movement delta
  */
-export function calculateMovementDelta(axes, deltaTime, speed = 2.0) {
+export function calculateMovementDelta(axes, deltaTime, speed = 2.0, yaw = 0) {
     // Apply deadzone
     const deadzone = 0.15;
     const x = Math.abs(axes.x) > deadzone ? axes.x : 0;
     const y = Math.abs(axes.y) > deadzone ? axes.y : 0;
     
-    return {
-        dx: x * speed * deltaTime,
-        dz: y * speed * deltaTime
-    };
+    // Calculate movement relative to current rotation
+    // In Three.js, camera faces -Z at yaw=0, and yaw rotates counter-clockwise
+    // At yaw=0: forward direction is (0, -1) in (dx, dz)
+    // At yaw=π/2: forward direction is (-1, 0) in (dx, dz)
+    const forward = -y * speed * deltaTime;
+    const strafe = x * speed * deltaTime;
+    
+    // Apply rotation transformation
+    // Forward direction: (-sin(yaw), -cos(yaw))
+    // Right direction (strafe): (cos(yaw), -sin(yaw))
+    const dx = -forward * Math.sin(yaw) + strafe * Math.cos(yaw);
+    const dz = -forward * Math.cos(yaw) - strafe * Math.sin(yaw);
+    
+    return { dx, dz };
 }
 
 /**
@@ -71,6 +86,17 @@ export function calculateMovementDelta(axes, deltaTime, speed = 2.0) {
  */
 export function calculateMovementDistance(delta) {
     return Math.sqrt(delta.dx * delta.dx + delta.dz * delta.dz);
+}
+
+/**
+ * Calculate rotation delta from input
+ * @param {number} rotationInput - Rotation input (-1 to 1, where 1 is counter-clockwise)
+ * @param {number} deltaTime - Time delta in seconds
+ * @param {number} rotationSpeed - Rotation speed in radians per second
+ * @returns {number} Rotation delta in radians
+ */
+export function calculateRotationDelta(rotationInput, deltaTime, rotationSpeed = Math.PI) {
+    return rotationInput * rotationSpeed * deltaTime;
 }
 
 /**

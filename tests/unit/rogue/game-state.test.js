@@ -6,6 +6,7 @@ import {
     createInitialState,
     updatePlayerPosition,
     updatePlayerWorldPosition,
+    updatePlayerRotation,
     decreaseHunger,
     damagePlayer,
     healPlayer,
@@ -75,6 +76,30 @@ describe('Game State', () => {
             
             // Assert
             expect(newState.player.worldPosition).toEqual(newPosition);
+        });
+    });
+
+    describe('updatePlayerRotation', () => {
+        it('should update player rotation', () => {
+            // Arrange
+            const state = createInitialState();
+            const newRotation = Math.PI / 2;
+            
+            // Act
+            const newState = updatePlayerRotation(state, newRotation);
+            
+            // Assert
+            expect(newState.player.rotation).toEqual(newRotation);
+            expect(state.player.rotation).toEqual(0); // Original unchanged
+        });
+        
+        it('should handle negative rotation', () => {
+            const state = createInitialState();
+            const newRotation = -Math.PI / 4;
+            
+            const newState = updatePlayerRotation(state, newRotation);
+            
+            expect(newState.player.rotation).toEqual(newRotation);
         });
     });
 

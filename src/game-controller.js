@@ -13,6 +13,7 @@ import {
     createInitialState,
     updatePlayerWorldPosition,
     updatePlayerPosition,
+    updatePlayerRotation,
     damagePlayer,
     setCombatMode,
     updateAccumulatedMovement
@@ -45,6 +46,7 @@ import {
     readKeyboardAxes,
     calculateMovementDelta,
     calculateMovementDistance,
+    calculateRotationDelta,
     detectCombatMode,
     calculateMovementBudget,
     checkCollision,
@@ -191,8 +193,22 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     // Last update time for delta calculation
     let lastTime = performance.now();
     
-    // Combat log
+    // Combat log and action log
     const combatLog = [];
+    const actionLog = []; // For display in UI
+    const MAX_LOG_MESSAGES = 10;
+    let gameOverLogged = false; // Track if game over has been logged
+    
+    /**
+     * Add a message to the action log
+     * @param {string} message - Message to add
+     */
+    function addLogMessage(message) {
+        actionLog.push(message);
+        if (actionLog.length > MAX_LOG_MESSAGES) {
+            actionLog.shift(); // Remove oldest message
+        }
+    }
     
     // Track last HUD stats to avoid unnecessary updates
     let lastHUDStats = {
@@ -315,6 +331,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 const result = executeAttack(enemy, gameState.player);
                 const message = getCombatMessage(enemy.name, 'Player', result);
                 combatLog.push(message);
+                addLogMessage(message); // Add to action log
                 
                 if (result.hit) {
                     playCombatHitSound(0.3);
@@ -397,6 +414,10 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     updateEnemyVisibility();
     updateLights();
     
+    // Add initial log message
+    addLogMessage('Welcome to the dungeon! Use WASD to move, arrows to rotate.');
+    addLogMessage('Explore and defeat enemies to progress.');
+    
     /**
      * Update game state and render
      */
@@ -406,6 +427,11 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         lastTime = currentTime;
         
         if (gameState.gameOver) {
+            // Log game over message once using flag
+            if (!gameOverLogged) {
+                addLogMessage(`💀 GAME OVER: ${gameState.deathMessage}`);
+                gameOverLogged = true;
+            }
             return; // Stop updating if game over
         }
         
@@ -420,7 +446,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
         };
         
-        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0);
+        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0, gameState.player.rotation);
         const moveDistance = calculateMovementDistance(moveDelta);
         
         // Apply movement if not in combat mode or always allow in exploration
@@ -445,6 +471,12 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     gridPos.y !== gameState.player.position.y) {
                     gameState = updatePlayerPosition(gameState, gridPos);
                     
+                    // Check if player found stairs
+                    const tile = dungeon.grid[gridPos.y]?.[gridPos.x];
+                    if (tile === 'stairs_down') {
+                        addLogMessage('🎯 You found the stairs down!');
+                    }
+                    
                     // Update visibility
                     gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos);
                     gameState.exploredTiles = updateExploredTiles(
@@ -458,8 +490,19 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 
                 // Check for turn advancement
                 if (checkTurnAdvancement(gameState)) {
+                    const oldHunger = gameState.player.hunger;
                     gameState = advanceTurn(gameState);
                     playFootstepSound(0.2);
+                    
+                    // Check for hunger warnings
+                    const newHunger = gameState.player.hunger;
+                    if (newHunger <= 100 && oldHunger > 100) {
+                        addLogMessage('⚠️ You are getting hungry!');
+                    } else if (newHunger <= 50 && oldHunger > 50) {
+                        addLogMessage('⚠️⚠️ You are very hungry!');
+                    } else if (newHunger <= 20 && oldHunger > 20) {
+                        addLogMessage('🚨 Critical: You are starving!');
+                    }
                     
                     // Process enemy turns
                     processEnemies();
@@ -478,6 +521,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     visibleEnemies,
                     COMBAT_DETECTION_RADIUS
                 );
+                
+                // Log combat mode changes
+                if (inCombat && !gameState.inCombatMode) {
+                    addLogMessage('⚔️ Entered combat mode!');
+                } else if (!inCombat && gameState.inCombatMode) {
+                    addLogMessage('✓ Combat ended.');
+                }
+                
                 gameState = setCombatMode(gameState, inCombat);
             }
         }
@@ -513,10 +564,20 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         }
     }
     
+    /**
+     * Set player rotation (for external control like mouse)
+     * @param {number} rotation - Rotation in radians
+     */
+    function setRotation(rotation) {
+        gameState = updatePlayerRotation(gameState, rotation);
+    }
+    
     return {
         update,
         dispose,
         getState: () => gameState,
-        getCombatLog: () => combatLog
+        getCombatLog: () => combatLog,
+        getActionLog: () => actionLog,
+        setRotation
     };
 }
