@@ -30,7 +30,10 @@ jobs:
         run: |
           npm install
           npm run build --if-present
-          npm run test --if-present
+          npm run test --if-
+
+      - name: Remove node_modules before packaging
+        run: rm -rf ./node_modules/*
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -68,4 +71,5 @@ jobs:
           app-name: 'wrx'
           slot-name: 'Production'
           package: .
+
 
