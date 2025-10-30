@@ -146,6 +146,13 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     );
     scene.add(playerMesh);
     
+    // Position camera at player's starting location
+    camera.position.set(
+        gameState.player.worldPosition.x,
+        gameState.player.worldPosition.y,
+        gameState.player.worldPosition.z
+    );
+    
     // Create enemy meshes
     for (const enemy of gameState.entities.enemies) {
         const config = ENEMY_TYPES[enemy.type];
@@ -197,104 +204,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         turn: gameState.turnCount
     };
     
-    /**
-     * Update game state and render
-     */
-    function update() {
-        const currentTime = performance.now();
-        const deltaTime = (currentTime - lastTime) / 1000;
-        lastTime = currentTime;
-        
-        if (gameState.gameOver) {
-            return; // Stop updating if game over
-        }
-        
-        // Read input from VR controller or keyboard
-        const controller = renderer.xr.getController(0);
-        const vrAxes = readJoystickAxes(controller);
-        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0 };
-        
-        // Combine VR and keyboard input (prioritize VR when both active)
-        const axes = {
-            x: vrAxes.x !== 0 ? vrAxes.x : kbAxes.x,
-            y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
-        };
-        
-        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0);
-        const moveDistance = calculateMovementDistance(moveDelta);
-        
-        // Apply movement if not in combat mode or always allow in exploration
-        if (moveDistance > 0.01) {
-            const newWorldPos = {
-                x: gameState.player.worldPosition.x + moveDelta.dx,
-                y: gameState.player.worldPosition.y,
-                z: gameState.player.worldPosition.z + moveDelta.dz
-            };
-            
-            // Check collision
-            if (checkCollision(newWorldPos, dungeon.grid, worldToGrid, isWalkable)) {
-                gameState = updatePlayerWorldPosition(gameState, newWorldPos);
-                
-                // Update player mesh
-                playerMesh.position.set(newWorldPos.x, 0, newWorldPos.z);
-                camera.position.set(newWorldPos.x, 1.6, newWorldPos.z);
-                
-                // Update grid position
-                const gridPos = worldToGrid(newWorldPos.x, newWorldPos.z);
-                if (gridPos.x !== gameState.player.position.x || 
-                    gridPos.y !== gameState.player.position.y) {
-                    gameState = updatePlayerPosition(gameState, gridPos);
-                    
-                    // Update visibility
-                    gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos);
-                    gameState.exploredTiles = updateExploredTiles(
-                        gameState.exploredTiles,
-                        gameState.visibleTiles
-                    );
-                }
-                
-                // Accumulate movement
-                gameState = updateAccumulatedMovement(gameState, moveDistance);
-                
-                // Check for turn advancement
-                if (checkTurnAdvancement(gameState)) {
-                    gameState = advanceTurn(gameState);
-                    playFootstepSound(0.2);
-                    
-                    // Process enemy turns
-                    processEnemies();
-                    
-                    // Update HUD
-                    updateHUD();
-                }
-                
-                // Check combat mode
-                const visibleEnemies = filterVisibleEntities(
-                    gameState.entities.enemies.filter(isEntityAlive),
-                    gameState.visibleTiles
-                );
-                const inCombat = detectCombatMode(
-                    newWorldPos,
-                    visibleEnemies,
-                    COMBAT_DETECTION_RADIUS
-                );
-                gameState = setCombatMode(gameState, inCombat);
-            }
-        }
-        
-        // Update floor visibility
-        updateDungeonVisibility();
-        
-        // Update enemy visibility
-        updateEnemyVisibility();
-        
-        // Update room lights
-        updateLights();
-        
-        // Show movement indicator in combat mode
-        updateMovementIndicator();
-    }
-    
+    // Helper functions for updating visibility (defined before being called below)
     /**
      * Update dungeon tile visibility
      */
@@ -311,15 +221,20 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 const visible = gameState.visibleTiles.has(key);
                 const explored = gameState.exploredTiles.has(key);
                 
-                const mesh = dungeonMeshes.get(key);
-                if (mesh) {
-                    mesh.visible = visible || explored;
+                const meshOrGroup = dungeonMeshes.get(key);
+                if (meshOrGroup) {
+                    meshOrGroup.visible = visible || explored;
                     
                     if (tile === 'floor' || tile === 'door') {
                         const visState = visible ? 'visible' : explored ? 'explored' : 'hidden';
                         const color = visState === 'visible' ? PALETTE.FLOOR : 
                                      visState === 'explored' ? PALETTE.EXPLORED : PALETTE.HIDDEN;
-                        mesh.material.color.setHex(color);
+                        
+                        // Handle group with userData.mesh (from addWhiteOutline)
+                        const actualMesh = meshOrGroup.userData?.mesh || meshOrGroup;
+                        if (actualMesh.material) {
+                            actualMesh.material.color.setHex(color);
+                        }
                     }
                 }
                 
@@ -475,6 +390,109 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         ctx.fillText(`Turn: ${currentStats.turn}`, 10, y);
         
         hudTexture.needsUpdate = true;
+    }
+    
+    // Initialize visibility on first frame
+    updateDungeonVisibility();
+    updateEnemyVisibility();
+    updateLights();
+    
+    /**
+     * Update game state and render
+     */
+    function update() {
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+        
+        if (gameState.gameOver) {
+            return; // Stop updating if game over
+        }
+        
+        // Read input from VR controller or keyboard
+        const controller = renderer.xr.getController(0);
+        const vrAxes = readJoystickAxes(controller);
+        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0 };
+        
+        // Combine VR and keyboard input (prioritize VR when both active)
+        const axes = {
+            x: vrAxes.x !== 0 ? vrAxes.x : kbAxes.x,
+            y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
+        };
+        
+        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0);
+        const moveDistance = calculateMovementDistance(moveDelta);
+        
+        // Apply movement if not in combat mode or always allow in exploration
+        if (moveDistance > 0.01) {
+            const newWorldPos = {
+                x: gameState.player.worldPosition.x + moveDelta.dx,
+                y: gameState.player.worldPosition.y,
+                z: gameState.player.worldPosition.z + moveDelta.dz
+            };
+            
+            // Check collision
+            if (checkCollision(newWorldPos, dungeon.grid, worldToGrid, isWalkable)) {
+                gameState = updatePlayerWorldPosition(gameState, newWorldPos);
+                
+                // Update player mesh
+                playerMesh.position.set(newWorldPos.x, 0, newWorldPos.z);
+                camera.position.set(newWorldPos.x, 1.6, newWorldPos.z);
+                
+                // Update grid position
+                const gridPos = worldToGrid(newWorldPos.x, newWorldPos.z);
+                if (gridPos.x !== gameState.player.position.x || 
+                    gridPos.y !== gameState.player.position.y) {
+                    gameState = updatePlayerPosition(gameState, gridPos);
+                    
+                    // Update visibility
+                    gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos);
+                    gameState.exploredTiles = updateExploredTiles(
+                        gameState.exploredTiles,
+                        gameState.visibleTiles
+                    );
+                }
+                
+                // Accumulate movement
+                gameState = updateAccumulatedMovement(gameState, moveDistance);
+                
+                // Check for turn advancement
+                if (checkTurnAdvancement(gameState)) {
+                    gameState = advanceTurn(gameState);
+                    playFootstepSound(0.2);
+                    
+                    // Process enemy turns
+                    processEnemies();
+                    
+                    // Update HUD
+                    updateHUD();
+                }
+                
+                // Check combat mode
+                const visibleEnemies = filterVisibleEntities(
+                    gameState.entities.enemies.filter(isEntityAlive),
+                    gameState.visibleTiles
+                );
+                const inCombat = detectCombatMode(
+                    newWorldPos,
+                    visibleEnemies,
+                    COMBAT_DETECTION_RADIUS
+                );
+                gameState = setCombatMode(gameState, inCombat);
+            }
+        }
+        
+        // Update floor visibility
+        updateDungeonVisibility();
+        
+        // Update enemy visibility
+        updateEnemyVisibility();
+        
+        // Update room lights
+        updateLights();
+        
+        // Show movement indicator in combat mode
+        updateMovementIndicator();
     }
     
     /**
