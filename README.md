@@ -91,18 +91,23 @@ Upload the files to any web server with HTTPS enabled, then access it from your 
 ## Controls
 
 ### Desktop Mode
-- **WASD** or **Arrow Keys**: Move character (forward, back, strafe left/right)
+- **WASD**: Strafe movement (left/right) and forward/back
+- **Arrow Keys**: 
+  - **Up/Down**: Move forward/backward in facing direction
+  - **Left/Right**: Rotate left/right (tank controls)
 - **Mouse**: Look around (requires pointer lock - click canvas to enable)
 - **ESC**: Release pointer lock
 - **Movement Threshold**: Moving 2 meters advances one turn
 - **Combat Mode**: Automatically activates when enemies are within 10 meters
 - **HUD**: Displays HP, Hunger, Level, and Turn count
+- **Action Log**: Top-left corner shows recent game events and combat messages
 
 ### VR Mode (Meta Quest)
 - **Left Controller Joystick**: Move character (smooth locomotion)
 - **Movement Threshold**: Moving 2 meters advances one turn
 - **Combat Mode**: Automatically activates when enemies are within 10 meters
 - **HUD**: Displays HP, Hunger, Level, and Turn count
+- **Action Log**: Shows recent game events and combat messages
 
 ## Development
 

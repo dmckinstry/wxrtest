@@ -426,6 +426,10 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         lastTime = currentTime;
         
         if (gameState.gameOver) {
+            // Log game over message once
+            if (actionLog.length === 0 || !actionLog[actionLog.length - 1].includes('GAME OVER')) {
+                addLogMessage(`💀 GAME OVER: ${gameState.deathMessage}`);
+            }
             return; // Stop updating if game over
         }
         
@@ -471,6 +475,12 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     gridPos.y !== gameState.player.position.y) {
                     gameState = updatePlayerPosition(gameState, gridPos);
                     
+                    // Check if player found stairs
+                    const tile = dungeon.grid[gridPos.y]?.[gridPos.x];
+                    if (tile === 'stairs_down') {
+                        addLogMessage('🎯 You found the stairs down!');
+                    }
+                    
                     // Update visibility
                     gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos);
                     gameState.exploredTiles = updateExploredTiles(
@@ -484,8 +494,19 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 
                 // Check for turn advancement
                 if (checkTurnAdvancement(gameState)) {
+                    const oldHunger = gameState.player.hunger;
                     gameState = advanceTurn(gameState);
                     playFootstepSound(0.2);
+                    
+                    // Check for hunger warnings
+                    const newHunger = gameState.player.hunger;
+                    if (newHunger <= 100 && oldHunger > 100) {
+                        addLogMessage('⚠️ You are getting hungry!');
+                    } else if (newHunger <= 50 && oldHunger > 50) {
+                        addLogMessage('⚠️⚠️ You are very hungry!');
+                    } else if (newHunger <= 20 && oldHunger > 20) {
+                        addLogMessage('🚨 Critical: You are starving!');
+                    }
                     
                     // Process enemy turns
                     processEnemies();
@@ -504,6 +525,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     visibleEnemies,
                     COMBAT_DETECTION_RADIUS
                 );
+                
+                // Log combat mode changes
+                if (inCombat && !gameState.inCombatMode) {
+                    addLogMessage('⚔️ Entered combat mode!');
+                } else if (!inCombat && gameState.inCombatMode) {
+                    addLogMessage('✓ Combat ended.');
+                }
+                
                 gameState = setCombatMode(gameState, inCombat);
             }
         }
