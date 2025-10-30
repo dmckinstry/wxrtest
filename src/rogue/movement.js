@@ -7,18 +7,17 @@ import { MOVEMENT_THRESHOLD, COMBAT_DETECTION_RADIUS } from './constants.js';
 import { distance } from './grid-utils.js';
 
 /**
- * Read keyboard input axes and rotation
+ * Read keyboard input axes
  * @param {object} keyStates - Object mapping key names to boolean states
- * @returns {{x: number, y: number, rotation: number}} Keyboard axes values (-1 to 1) and rotation
+ * @returns {{x: number, y: number}} Keyboard axes values (-1 to 1)
  */
 export function readKeyboardAxes(keyStates) {
     if (!keyStates || typeof keyStates !== 'object') {
-        return { x: 0, y: 0, rotation: 0 };
+        return { x: 0, y: 0 };
     }
     
     let x = 0;
     let y = 0;
-    let rotation = 0;
     
     // WASD for movement (strafe and forward/back)
     if (keyStates['KeyW']) y -= 1;
@@ -26,13 +25,11 @@ export function readKeyboardAxes(keyStates) {
     if (keyStates['KeyA']) x -= 1;
     if (keyStates['KeyD']) x += 1;
     
-    // Arrow keys: Up/Down for forward/back, Left/Right for rotation (tank controls)
+    // Arrow keys: Up/Down for forward/back (Left/Right handled in index.html for rotation)
     if (keyStates['ArrowUp']) y -= 1;
     if (keyStates['ArrowDown']) y += 1;
-    if (keyStates['ArrowLeft']) rotation += 1;  // Rotate left
-    if (keyStates['ArrowRight']) rotation -= 1; // Rotate right
     
-    return { x, y, rotation };
+    return { x, y };
 }
 
 /**

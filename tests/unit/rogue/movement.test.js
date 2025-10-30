@@ -22,13 +22,13 @@ describe('Movement System', () => {
             const result = readKeyboardAxes(null);
             
             // Assert
-            expect(result).toEqual({ x: 0, y: 0, rotation: 0 });
+            expect(result).toEqual({ x: 0, y: 0 });
         });
 
         it('should return zero axes for empty keyStates', () => {
             const result = readKeyboardAxes({});
             
-            expect(result).toEqual({ x: 0, y: 0, rotation: 0 });
+            expect(result).toEqual({ x: 0, y: 0 });
         });
 
         it('should read W key for forward movement', () => {
@@ -36,7 +36,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 0, y: -1, rotation: 0 });
+            expect(result).toEqual({ x: 0, y: -1 });
         });
 
         it('should read S key for backward movement', () => {
@@ -44,7 +44,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 0, y: 1, rotation: 0 });
+            expect(result).toEqual({ x: 0, y: 1 });
         });
 
         it('should read A key for left movement', () => {
@@ -52,7 +52,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: -1, y: 0, rotation: 0 });
+            expect(result).toEqual({ x: -1, y: 0 });
         });
 
         it('should read D key for right movement', () => {
@@ -60,7 +60,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: 0, rotation: 0 });
+            expect(result).toEqual({ x: 1, y: 0 });
         });
 
         it('should read arrow keys for movement and rotation', () => {
@@ -68,7 +68,8 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 0, y: -1, rotation: -1 });
+            // Arrow right is now handled in index.html for rotation, so not read here
+            expect(result).toEqual({ x: 0, y: -1 });
         });
 
         it('should combine multiple keys', () => {
@@ -76,7 +77,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: -1, rotation: 0 });
+            expect(result).toEqual({ x: 1, y: -1 });
         });
     });
 

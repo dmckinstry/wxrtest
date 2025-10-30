@@ -438,19 +438,13 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         // Read input from VR controller or keyboard
         const controller = renderer.xr.getController(0);
         const vrAxes = readJoystickAxes(controller);
-        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0, rotation: 0 };
+        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0 };
         
         // Combine VR and keyboard input (prioritize VR when both active)
         const axes = {
             x: vrAxes.x !== 0 ? vrAxes.x : kbAxes.x,
             y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
         };
-        
-        // Handle rotation from keyboard (only in desktop mode, not VR)
-        if (!renderer.xr.isPresenting && kbAxes.rotation !== 0) {
-            const rotationDelta = calculateRotationDelta(kbAxes.rotation, deltaTime);
-            gameState = updatePlayerRotation(gameState, gameState.player.rotation + rotationDelta);
-        }
         
         const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0, gameState.player.rotation);
         const moveDistance = calculateMovementDistance(moveDelta);

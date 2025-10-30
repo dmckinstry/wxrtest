@@ -94,6 +94,9 @@
         let yaw = 0;
         let pitch = 0;
         let isPointerLocked = false;
+        
+        // Rotation speed for keyboard (radians per second)
+        const keyboardRotationSpeed = Math.PI; // 180 degrees per second
 
         init();
         animate();
@@ -239,21 +242,32 @@
         function animate() {
             renderer.setAnimationLoop(render);
         }
+        
+        let lastFrameTime = performance.now();
 
         function render() {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastFrameTime) / 1000;
+            lastFrameTime = currentTime;
+            
             // Update camera rotation in desktop mode (not in VR)
             if (!renderer.xr.isPresenting) {
-                // Sync yaw with game state rotation (for arrow key rotation)
-                if (gameController) {
-                    const state = gameController.getState();
-                    if (state && state.player) {
-                        yaw = state.player.rotation;
-                    }
+                // Handle keyboard rotation (arrow keys)
+                if (keyboardState['ArrowLeft']) {
+                    yaw += keyboardRotationSpeed * deltaTime;
+                }
+                if (keyboardState['ArrowRight']) {
+                    yaw -= keyboardRotationSpeed * deltaTime;
                 }
                 
                 camera.rotation.order = 'YXZ';
                 camera.rotation.y = yaw;
                 camera.rotation.x = pitch;
+                
+                // Sync game state rotation with current yaw (yaw is source of truth)
+                if (gameController) {
+                    gameController.setRotation(yaw);
+                }
             }
             
             // Update game
