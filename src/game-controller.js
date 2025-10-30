@@ -13,6 +13,7 @@ import {
     createInitialState,
     updatePlayerWorldPosition,
     updatePlayerPosition,
+    updatePlayerRotation,
     damagePlayer,
     setCombatMode,
     updateAccumulatedMovement
@@ -45,6 +46,7 @@ import {
     readKeyboardAxes,
     calculateMovementDelta,
     calculateMovementDistance,
+    calculateRotationDelta,
     detectCombatMode,
     calculateMovementBudget,
     checkCollision,
@@ -191,8 +193,21 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     // Last update time for delta calculation
     let lastTime = performance.now();
     
-    // Combat log
+    // Combat log and action log
     const combatLog = [];
+    const actionLog = []; // For display in UI
+    const MAX_LOG_MESSAGES = 10;
+    
+    /**
+     * Add a message to the action log
+     * @param {string} message - Message to add
+     */
+    function addLogMessage(message) {
+        actionLog.push(message);
+        if (actionLog.length > MAX_LOG_MESSAGES) {
+            actionLog.shift(); // Remove oldest message
+        }
+    }
     
     // Track last HUD stats to avoid unnecessary updates
     let lastHUDStats = {
@@ -315,6 +330,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 const result = executeAttack(enemy, gameState.player);
                 const message = getCombatMessage(enemy.name, 'Player', result);
                 combatLog.push(message);
+                addLogMessage(message); // Add to action log
                 
                 if (result.hit) {
                     playCombatHitSound(0.3);
@@ -397,6 +413,10 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     updateEnemyVisibility();
     updateLights();
     
+    // Add initial log message
+    addLogMessage('Welcome to the dungeon! Use WASD to move, arrows to rotate.');
+    addLogMessage('Explore and defeat enemies to progress.');
+    
     /**
      * Update game state and render
      */
@@ -412,7 +432,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         // Read input from VR controller or keyboard
         const controller = renderer.xr.getController(0);
         const vrAxes = readJoystickAxes(controller);
-        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0 };
+        const kbAxes = keyboardState ? readKeyboardAxes(keyboardState) : { x: 0, y: 0, rotation: 0 };
         
         // Combine VR and keyboard input (prioritize VR when both active)
         const axes = {
@@ -420,7 +440,13 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
         };
         
-        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0);
+        // Handle rotation from keyboard (only in desktop mode, not VR)
+        if (!renderer.xr.isPresenting && kbAxes.rotation !== 0) {
+            const rotationDelta = calculateRotationDelta(kbAxes.rotation, deltaTime);
+            gameState = updatePlayerRotation(gameState, gameState.player.rotation + rotationDelta);
+        }
+        
+        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0, gameState.player.rotation);
         const moveDistance = calculateMovementDistance(moveDelta);
         
         // Apply movement if not in combat mode or always allow in exploration
@@ -513,10 +539,20 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         }
     }
     
+    /**
+     * Set player rotation (for external control like mouse)
+     * @param {number} rotation - Rotation in radians
+     */
+    function setRotation(rotation) {
+        gameState = updatePlayerRotation(gameState, rotation);
+    }
+    
     return {
         update,
         dispose,
         getState: () => gameState,
-        getCombatLog: () => combatLog
+        getCombatLog: () => combatLog,
+        getActionLog: () => actionLog,
+        setRotation
     };
 }

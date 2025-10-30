@@ -20,6 +20,7 @@ export function createInitialState(seed = Date.now()) {
         player: {
             position: { x: 0, y: 0 }, // Grid position
             worldPosition: { x: 0, y: 1.6, z: 0 }, // 3D world position (y=1.6 for VR head height)
+            rotation: 0, // Player yaw rotation in radians
             hp: STARTING_HP,
             maxHp: STARTING_HP,
             hunger: STARTING_HUNGER,
@@ -105,6 +106,22 @@ export function updatePlayerWorldPosition(state, worldPosition) {
         player: {
             ...state.player,
             worldPosition: { ...worldPosition }
+        }
+    };
+}
+
+/**
+ * Update player rotation
+ * @param {object} state - Current game state
+ * @param {number} rotation - New rotation in radians
+ * @returns {object} New state
+ */
+export function updatePlayerRotation(state, rotation) {
+    return {
+        ...state,
+        player: {
+            ...state.player,
+            rotation: rotation
         }
     };
 }

@@ -7,6 +7,7 @@ import {
     readKeyboardAxes,
     calculateMovementDelta,
     calculateMovementDistance,
+    calculateRotationDelta,
     detectCombatMode,
     calculateMovementBudget,
     checkCollision,
@@ -21,13 +22,13 @@ describe('Movement System', () => {
             const result = readKeyboardAxes(null);
             
             // Assert
-            expect(result).toEqual({ x: 0, y: 0 });
+            expect(result).toEqual({ x: 0, y: 0, rotation: 0 });
         });
 
         it('should return zero axes for empty keyStates', () => {
             const result = readKeyboardAxes({});
             
-            expect(result).toEqual({ x: 0, y: 0 });
+            expect(result).toEqual({ x: 0, y: 0, rotation: 0 });
         });
 
         it('should read W key for forward movement', () => {
@@ -35,7 +36,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 0, y: -1 });
+            expect(result).toEqual({ x: 0, y: -1, rotation: 0 });
         });
 
         it('should read S key for backward movement', () => {
@@ -43,7 +44,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 0, y: 1 });
+            expect(result).toEqual({ x: 0, y: 1, rotation: 0 });
         });
 
         it('should read A key for left movement', () => {
@@ -51,7 +52,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: -1, y: 0 });
+            expect(result).toEqual({ x: -1, y: 0, rotation: 0 });
         });
 
         it('should read D key for right movement', () => {
@@ -59,15 +60,15 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: 0 });
+            expect(result).toEqual({ x: 1, y: 0, rotation: 0 });
         });
 
-        it('should read arrow keys', () => {
+        it('should read arrow keys for movement and rotation', () => {
             const keyStates = { 'ArrowUp': true, 'ArrowRight': true };
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: -1 });
+            expect(result).toEqual({ x: 0, y: -1, rotation: -1 });
         });
 
         it('should combine multiple keys', () => {
@@ -75,7 +76,7 @@ describe('Movement System', () => {
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: -1 });
+            expect(result).toEqual({ x: 1, y: -1, rotation: 0 });
         });
     });
 
@@ -126,19 +127,31 @@ describe('Movement System', () => {
             const axes = { x: 1.0, y: 0.5 };
             const deltaTime = 0.5;
             
-            const result = calculateMovementDelta(axes, deltaTime, 2.0);
+            const result = calculateMovementDelta(axes, deltaTime, 2.0, 0); // yaw = 0
             
             expect(result.dx).toBeCloseTo(1.0);
-            expect(result.dz).toBeCloseTo(0.5);
+            expect(result.dz).toBeCloseTo(-0.5); // forward is negative
         });
 
         it('should scale by speed', () => {
             const axes = { x: 1.0, y: 0.0 };
             const deltaTime = 1.0;
             
-            const result = calculateMovementDelta(axes, deltaTime, 5.0);
+            const result = calculateMovementDelta(axes, deltaTime, 5.0, 0); // yaw = 0
             
             expect(result.dx).toBeCloseTo(5.0);
+        });
+        
+        it('should apply rotation transformation', () => {
+            const axes = { x: 0, y: -1.0 }; // Forward
+            const deltaTime = 1.0;
+            const yaw = Math.PI / 2; // 90 degrees
+            
+            const result = calculateMovementDelta(axes, deltaTime, 2.0, yaw);
+            
+            // At 90 degrees, forward should move in +x direction
+            expect(result.dx).toBeCloseTo(-2.0, 1);
+            expect(result.dz).toBeCloseTo(0, 1);
         });
     });
 
@@ -160,6 +173,30 @@ describe('Movement System', () => {
             const result = calculateMovementDistance(delta);
             
             expect(result).toBe(0);
+        });
+    });
+
+    describe('calculateRotationDelta', () => {
+        it('should calculate rotation delta', () => {
+            const rotationInput = 1.0;
+            const deltaTime = 1.0;
+            const rotationSpeed = Math.PI;
+            
+            const result = calculateRotationDelta(rotationInput, deltaTime, rotationSpeed);
+            
+            expect(result).toBeCloseTo(Math.PI);
+        });
+
+        it('should return zero for no rotation input', () => {
+            const result = calculateRotationDelta(0, 1.0);
+            
+            expect(result).toBe(0);
+        });
+        
+        it('should scale by deltaTime', () => {
+            const result = calculateRotationDelta(1.0, 0.5, Math.PI);
+            
+            expect(result).toBeCloseTo(Math.PI / 2);
         });
     });
 

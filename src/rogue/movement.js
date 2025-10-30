@@ -7,25 +7,32 @@ import { MOVEMENT_THRESHOLD, COMBAT_DETECTION_RADIUS } from './constants.js';
 import { distance } from './grid-utils.js';
 
 /**
- * Read keyboard input axes
+ * Read keyboard input axes and rotation
  * @param {object} keyStates - Object mapping key names to boolean states
- * @returns {{x: number, y: number}} Keyboard axes values (-1 to 1)
+ * @returns {{x: number, y: number, rotation: number}} Keyboard axes values (-1 to 1) and rotation
  */
 export function readKeyboardAxes(keyStates) {
     if (!keyStates || typeof keyStates !== 'object') {
-        return { x: 0, y: 0 };
+        return { x: 0, y: 0, rotation: 0 };
     }
     
     let x = 0;
     let y = 0;
+    let rotation = 0;
     
-    // WASD and arrow keys for movement
-    if (keyStates['KeyW'] || keyStates['ArrowUp']) y -= 1;
-    if (keyStates['KeyS'] || keyStates['ArrowDown']) y += 1;
-    if (keyStates['KeyA'] || keyStates['ArrowLeft']) x -= 1;
-    if (keyStates['KeyD'] || keyStates['ArrowRight']) x += 1;
+    // WASD for movement (strafe and forward/back)
+    if (keyStates['KeyW']) y -= 1;
+    if (keyStates['KeyS']) y += 1;
+    if (keyStates['KeyA']) x -= 1;
+    if (keyStates['KeyD']) x += 1;
     
-    return { x, y };
+    // Arrow keys: Up/Down for forward/back, Left/Right for rotation (tank controls)
+    if (keyStates['ArrowUp']) y -= 1;
+    if (keyStates['ArrowDown']) y += 1;
+    if (keyStates['ArrowLeft']) rotation += 1;  // Rotate left
+    if (keyStates['ArrowRight']) rotation -= 1; // Rotate right
+    
+    return { x, y, rotation };
 }
 
 /**
@@ -50,18 +57,26 @@ export function readJoystickAxes(controller) {
  * @param {object} axes - Joystick axes {x, y}
  * @param {number} deltaTime - Time delta in seconds
  * @param {number} speed - Movement speed (meters per second)
+ * @param {number} yaw - Current camera/player yaw rotation in radians (optional)
  * @returns {{dx: number, dz: number}} Movement delta
  */
-export function calculateMovementDelta(axes, deltaTime, speed = 2.0) {
+export function calculateMovementDelta(axes, deltaTime, speed = 2.0, yaw = 0) {
     // Apply deadzone
     const deadzone = 0.15;
     const x = Math.abs(axes.x) > deadzone ? axes.x : 0;
     const y = Math.abs(axes.y) > deadzone ? axes.y : 0;
     
-    return {
-        dx: x * speed * deltaTime,
-        dz: y * speed * deltaTime
-    };
+    // Calculate movement relative to current rotation
+    // In Three.js, positive Y rotation is counter-clockwise (left)
+    // We want: forward (y=-1) to move in the direction we're facing
+    const forward = -y * speed * deltaTime;
+    const strafe = x * speed * deltaTime;
+    
+    // Apply rotation transformation
+    const dx = strafe * Math.cos(yaw) - forward * Math.sin(yaw);
+    const dz = strafe * Math.sin(yaw) + forward * Math.cos(yaw);
+    
+    return { dx, dz };
 }
 
 /**
@@ -71,6 +86,17 @@ export function calculateMovementDelta(axes, deltaTime, speed = 2.0) {
  */
 export function calculateMovementDistance(delta) {
     return Math.sqrt(delta.dx * delta.dx + delta.dz * delta.dz);
+}
+
+/**
+ * Calculate rotation delta from input
+ * @param {number} rotationInput - Rotation input (-1 to 1, where 1 is counter-clockwise)
+ * @param {number} deltaTime - Time delta in seconds
+ * @param {number} rotationSpeed - Rotation speed in radians per second
+ * @returns {number} Rotation delta in radians
+ */
+export function calculateRotationDelta(rotationInput, deltaTime, rotationSpeed = Math.PI) {
+    return rotationInput * rotationSpeed * deltaTime;
 }
 
 /**
