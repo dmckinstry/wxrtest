@@ -9,6 +9,8 @@ import {
     createPotion,
     createScroll,
     createGold,
+    createFood,
+    createItemFromSpawn,
     identifyItem,
     getItemDisplayName,
     isEntityAlive,
@@ -325,4 +327,93 @@ describe('Entity Manager', () => {
             expect(entity.hp).toBe(20);
         });
     });
+
+    describe('createFood', () => {
+        it('should create food with default hunger restore', () => {
+            // Arrange & Act
+            const food = createFood('ration');
+            
+            // Assert
+            expect(food.type).toBe(ITEM_TYPES.FOOD);
+            expect(food.name).toBe('ration');
+            expect(food.hungerRestore).toBe(100);
+            expect(food.identified).toBe(true);
+        });
+
+        it('should create food with custom hunger restore', () => {
+            const food = createFood('apple', 50);
+            
+            expect(food.name).toBe('apple');
+            expect(food.hungerRestore).toBe(50);
+        });
+
+        it('should have unique id', () => {
+            const food1 = createFood('bread');
+            const food2 = createFood('bread');
+            
+            expect(food1.id).not.toBe(food2.id);
+        });
+    });
+
+    describe('createItemFromSpawn', () => {
+        it('should create weapon from weapon spawn', () => {
+            const spawn = {
+                itemType: 'weapon',
+                position: { x: 5, y: 5 },
+                level: 1
+            };
+            
+            const item = createItemFromSpawn(spawn);
+            
+            expect(item.type).toBe(ITEM_TYPES.WEAPON);
+            expect(item.position).toEqual({ x: 5, y: 5 });
+            expect(item.name).toBeDefined();
+        });
+
+        it('should create armor from armor spawn', () => {
+            const spawn = {
+                itemType: 'armor',
+                position: { x: 3, y: 3 },
+                level: 2
+            };
+            
+            const item = createItemFromSpawn(spawn);
+            
+            expect(item.type).toBe(ITEM_TYPES.ARMOR);
+            expect(item.position).toEqual({ x: 3, y: 3 });
+        });
+
+        it('should create food from food spawn', () => {
+            const spawn = {
+                itemType: 'food',
+                position: { x: 7, y: 7 },
+                level: 1
+            };
+            
+            const item = createItemFromSpawn(spawn);
+            
+            expect(item.type).toBe(ITEM_TYPES.FOOD);
+            expect(item.hungerRestore).toBeGreaterThan(0);
+        });
+
+        it('should create gold from gold spawn with level scaling', () => {
+            const spawn1 = {
+                itemType: 'gold',
+                position: { x: 1, y: 1 },
+                level: 1
+            };
+            const spawn5 = {
+                itemType: 'gold',
+                position: { x: 2, y: 2 },
+                level: 5
+            };
+            
+            const gold1 = createItemFromSpawn(spawn1);
+            const gold5 = createItemFromSpawn(spawn5);
+            
+            expect(gold1.type).toBe(ITEM_TYPES.GOLD);
+            expect(gold5.amount).toBeGreaterThan(gold1.amount);
+        });
+    });
 });
+

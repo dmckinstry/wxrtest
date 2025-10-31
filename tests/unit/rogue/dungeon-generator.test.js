@@ -150,6 +150,39 @@ describe('Dungeon Generator', () => {
             
             expect(floorCount).toBeGreaterThan(0);
         });
+
+        it('should generate item spawns', () => {
+            const dungeon = generateDungeon(888, 1);
+            
+            expect(dungeon.itemSpawns).toBeDefined();
+            expect(Array.isArray(dungeon.itemSpawns)).toBe(true);
+            expect(dungeon.itemSpawns.length).toBeGreaterThan(0);
+        });
+
+        it('should include level in dungeon data', () => {
+            const dungeon = generateDungeon(999, 3);
+            
+            expect(dungeon.level).toBe(3);
+        });
+
+        it('should scale item count with level', () => {
+            const dungeon1 = generateDungeon(111, 1);
+            const dungeon5 = generateDungeon(111, 5);
+            
+            expect(dungeon5.itemSpawns.length).toBeGreaterThan(dungeon1.itemSpawns.length);
+        });
+
+        it('should generate items with proper spawn data', () => {
+            const dungeon = generateDungeon(222, 2);
+            
+            for (const spawn of dungeon.itemSpawns) {
+                expect(spawn.itemType).toBeDefined();
+                expect(spawn.position).toBeDefined();
+                expect(spawn.position.x).toBeGreaterThanOrEqual(0);
+                expect(spawn.position.y).toBeGreaterThanOrEqual(0);
+                expect(spawn.level).toBe(2);
+            }
+        });
     });
 
     describe('getPlayerStartPosition', () => {

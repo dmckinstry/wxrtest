@@ -69,7 +69,7 @@ import {
     findInteractablesAtPosition,
     getInteractionAction
 } from './rogue/interaction.js';
-import { getInventoryDisplay, getSlotLetter } from './rogue/inventory.js';
+import { getInventoryDisplay, getSlotLetter, useItem, equipItem, removeItemFromInventory } from './rogue/inventory.js';
 
 /**
  * Create and initialize the game
@@ -886,6 +886,91 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         addLogMessage(inventoryVisible ? '📋 Inventory opened' : '📋 Inventory closed');
     }
     
+    /**
+     * Use an item from inventory
+     * @param {number} slot - Inventory slot (0-25)
+     * @returns {boolean} True if item was used successfully
+     */
+    function useInventoryItem(slot) {
+        if (gameState.gameOver) return false;
+        
+        const result = useItem(gameState.inventory, slot, gameState);
+        
+        if (result.success) {
+            gameState.inventory = result.inventory;
+            gameState = result.newState;
+            addLogMessage(`✨ ${result.message}`);
+            updateHUD();
+            return true;
+        } else {
+            addLogMessage(`⚠️ ${result.message}`);
+            return false;
+        }
+    }
+    
+    /**
+     * Equip an item from inventory
+     * @param {number} slot - Inventory slot (0-25)
+     * @returns {boolean} True if item was equipped successfully
+     */
+    function equipInventoryItem(slot) {
+        if (gameState.gameOver) return false;
+        
+        const result = equipItem(gameState.inventory, slot, gameState.player);
+        
+        if (result.success) {
+            gameState.inventory = result.inventory;
+            gameState.player = result.player;
+            addLogMessage(`⚔️ ${result.message}`);
+            updateHUD();
+            return true;
+        } else {
+            addLogMessage(`⚠️ ${result.message}`);
+            return false;
+        }
+    }
+    
+    /**
+     * Drop an item from inventory
+     * @param {number} slot - Inventory slot (0-25)
+     * @returns {boolean} True if item was dropped successfully
+     */
+    function dropInventoryItem(slot) {
+        if (gameState.gameOver) return false;
+        
+        const result = removeItemFromInventory(gameState.inventory, slot);
+        
+        if (result.success) {
+            gameState.inventory = result.inventory;
+            
+            // Place item at player's current position
+            const droppedItem = {
+                ...result.item,
+                position: { ...gameState.player.position }
+            };
+            
+            gameState.entities.items.push(droppedItem);
+            
+            // Create mesh for dropped item
+            const world = gridToWorld(droppedItem.position.x, droppedItem.position.y);
+            const mesh = createItem(THREE, droppedItem, world.x, world.z);
+            
+            // Check if item is visible
+            const key = `${droppedItem.position.x},${droppedItem.position.y}`;
+            mesh.visible = gameState.visibleTiles.has(key);
+            
+            scene.add(mesh);
+            itemMeshes.set(droppedItem.id, mesh);
+            
+            const letter = getSlotLetter(slot);
+            addLogMessage(`📦 Dropped ${droppedItem.name || 'item'} (${letter})`);
+            return true;
+        } else {
+            addLogMessage(`⚠️ ${result.message || 'Cannot drop item'}`);
+            return false;
+        }
+    }
+    
     // Track inventory visibility state
     let inventoryVisible = false;
     
@@ -898,6 +983,9 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         setRotation,
         interact,
         getInventoryState,
-        toggleInventory
+        toggleInventory,
+        useInventoryItem,
+        equipInventoryItem,
+        dropInventoryItem
     };
 }
