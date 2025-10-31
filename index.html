@@ -134,12 +134,12 @@
         </div>
     </div>
     <div id="inventory-display">
-        <h2>Inventory</h2>
+        <h2>Inventory (<u>U</u>se / <u>D</u>rop)</h2>
         <div id="inventory-items">
         </div>
         <div class="footer">
-            Press 'i' or 'A' button to close<br>
-            Press item letter then: 'u' to use, 'e' to equip, 'd' to drop
+            Press 'i' to close<br>
+            Select item (a-z), then press 'u' to use or 'd' to drop
         </div>
     </div>
     <button id="vr-button">Enter VR</button>
@@ -372,15 +372,12 @@
                         const slot = keyChar.charCodeAt(0) - 'a'.charCodeAt(0);
                         pendingInventorySlot = slot;
                         console.log(`Selected slot ${keyChar} (${slot})`);
+                        updateInventoryDisplay(); // Update display to show selection
                         // Don't set keyboardState for inventory letter keys
                     } else if (pendingInventorySlot !== null) {
                         // Execute action on selected slot
                         if (event.code === 'KeyU') {
                             gameController.useInventoryItem(pendingInventorySlot);
-                            updateInventoryDisplay();
-                            pendingInventorySlot = null;
-                        } else if (event.code === 'KeyE') {
-                            gameController.equipInventoryItem(pendingInventorySlot);
                             updateInventoryDisplay();
                             pendingInventorySlot = null;
                         } else if (event.code === 'KeyD') {
@@ -415,7 +412,13 @@
                 if (invState.visible) {
                     invDisplay.style.display = 'block';
                     invItems.innerHTML = invState.items
-                        .map(item => `<div style="padding: 2px 0;">${item}</div>`)
+                        .map((item, index) => {
+                            const isSelected = pendingInventorySlot === index;
+                            const style = isSelected 
+                                ? 'padding: 2px 4px; background-color: rgba(0, 255, 0, 0.3); border: 1px solid #00ff00;' 
+                                : 'padding: 2px 0;';
+                            return `<div style="${style}">${item}</div>`;
+                        })
                         .join('');
                 } else {
                     invDisplay.style.display = 'none';

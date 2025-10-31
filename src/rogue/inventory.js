@@ -98,7 +98,7 @@ export function useItem(inventory, slot, state) {
                     newState.player.hp + healAmount,
                     newState.player.maxHp
                 );
-                message = `Healed ${healAmount} HP!`;
+                message = `Quaffed ${item.appearance || item.name}. Healed ${healAmount} HP!`;
             }
             break;
             
@@ -108,7 +108,7 @@ export function useItem(inventory, slot, state) {
                 newState.inventory = inventory.map(i => 
                     i ? { ...i, identified: true } : null
                 );
-                message = 'All items identified!';
+                message = 'Read scroll. All items identified!';
             }
             break;
             
@@ -119,6 +119,51 @@ export function useItem(inventory, slot, state) {
                 newState.player.maxHunger
             );
             message = `Ate ${item.name}. Restored ${restoreAmount} hunger!`;
+            break;
+            
+        case ITEM_TYPES.WEAPON:
+            // Equip weapon via use
+            newState.inventory = removeResult.inventory;
+            
+            // Unequip current weapon if any
+            if (newState.player.weapon) {
+                const addResult = addItemToInventory(newState.inventory, newState.player.weapon);
+                if (!addResult.success) {
+                    return {
+                        success: false,
+                        inventory: inventory,
+                        newState: state,
+                        message: 'Inventory full - cannot swap weapons'
+                    };
+                }
+                newState.inventory = addResult.inventory;
+            }
+            
+            newState.player.weapon = item;
+            message = `Equipped ${item.name}`;
+            break;
+            
+        case ITEM_TYPES.ARMOR:
+            // Equip armor via use
+            newState.inventory = removeResult.inventory;
+            
+            // Unequip current armor if any
+            if (newState.player.armor) {
+                const addResult = addItemToInventory(newState.inventory, newState.player.armor);
+                if (!addResult.success) {
+                    return {
+                        success: false,
+                        inventory: inventory,
+                        newState: state,
+                        message: 'Inventory full - cannot swap armor'
+                    };
+                }
+                newState.inventory = addResult.inventory;
+            }
+            
+            newState.player.armor = item;
+            newState.player.ac = 10 + item.acBonus;
+            message = `Equipped ${item.name}`;
             break;
             
         default:

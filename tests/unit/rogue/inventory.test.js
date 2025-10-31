@@ -203,22 +203,48 @@ describe('Inventory System', () => {
             expect(result.success).toBe(true);
         });
 
-        it('should handle using weapon (non-usable item)', () => {
+        it('should handle using weapon to equip it', () => {
             const inventory = createInventory();
             const weapon = {
                 type: ITEM_TYPES.WEAPON,
-                name: 'Sword'
+                name: 'Sword',
+                damage: [1, 8],
+                bonus: 1
             };
             const state = {
-                player: { hp: 20, maxHp: 20 },
-                statistics: { itemsUsed: 0 }
+                player: { hp: 20, maxHp: 20, weapon: null, ac: 10 },
+                statistics: { itemsUsed: 0 },
+                inventory: createInventory()
             };
             const addResult = addItemToInventory(inventory, weapon);
             
             const result = useItem(addResult.inventory, 0, state);
             
-            expect(result.success).toBe(false);
-            expect(result.message).toContain('Cannot use');
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Equipped');
+            expect(result.newState.player.weapon).toEqual(weapon);
+        });
+
+        it('should handle using armor to equip it', () => {
+            const inventory = createInventory();
+            const armor = {
+                type: ITEM_TYPES.ARMOR,
+                name: 'Chain Mail',
+                acBonus: 3
+            };
+            const state = {
+                player: { hp: 20, maxHp: 20, armor: null, ac: 10 },
+                statistics: { itemsUsed: 0 },
+                inventory: createInventory()
+            };
+            const addResult = addItemToInventory(inventory, armor);
+            
+            const result = useItem(addResult.inventory, 0, state);
+            
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Equipped');
+            expect(result.newState.player.armor).toEqual(armor);
+            expect(result.newState.player.ac).toBe(13); // 10 + 3
         });
     });
 
