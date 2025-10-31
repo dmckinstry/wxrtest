@@ -7,7 +7,8 @@ import {
     MOVEMENT_THRESHOLD,
     COMBAT_DETECTION_RADIUS,
     ENEMY_TYPES,
-    PALETTE
+    PALETTE,
+    ITEM_TYPES
 } from './rogue/constants.js';
 import { 
     createInitialState,
@@ -16,7 +17,10 @@ import {
     updatePlayerRotation,
     damagePlayer,
     setCombatMode,
-    updateAccumulatedMovement
+    updateAccumulatedMovement,
+    addItemToInventory,
+    removeItemFromWorld,
+    addGold
 } from './rogue/game-state.js';
 import { advanceTurn, checkTurnAdvancement } from './rogue/turn-manager.js';
 import { 
@@ -60,6 +64,11 @@ import {
     playCombatHitSound,
     createAmbientDrone
 } from './rogue/audio-generator.js';
+import {
+    findInteractablesAtPosition,
+    getInteractionAction
+} from './rogue/interaction.js';
+import { getInventoryDisplay, getSlotLetter } from './rogue/inventory.js';
 
 /**
  * Create and initialize the game
@@ -230,12 +239,24 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 const key = `${x},${y}`;
                 const tile = dungeon.grid[y][x];
                 
-                if (tile === 'wall') {
-                    continue;
-                }
-                
                 const visible = gameState.visibleTiles.has(key);
                 const explored = gameState.exploredTiles.has(key);
+                
+                // Handle walls - only visible if explored or currently visible
+                if (tile === 'wall') {
+                    const meshOrGroup = dungeonMeshes.get(key);
+                    if (meshOrGroup) {
+                        meshOrGroup.visible = visible || explored;
+                        
+                        // Darken explored walls that are not currently visible
+                        const actualMesh = meshOrGroup.userData?.mesh || meshOrGroup;
+                        if (actualMesh.material) {
+                            const color = visible ? PALETTE.WALL : PALETTE.EXPLORED;
+                            actualMesh.material.color.setHex(color);
+                        }
+                    }
+                    continue;
+                }
                 
                 const meshOrGroup = dungeonMeshes.get(key);
                 if (meshOrGroup) {
@@ -572,12 +593,126 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         gameState = updatePlayerRotation(gameState, rotation);
     }
     
+    /**
+     * Handle player interaction with the environment
+     * @returns {boolean} True if an interaction was performed
+     */
+    function interact() {
+        if (gameState.gameOver) return false;
+        
+        const position = gameState.player.position;
+        const tile = dungeon.grid[position.y]?.[position.x];
+        
+        const interactables = findInteractablesAtPosition(
+            position,
+            gameState.entities,
+            tile
+        );
+        
+        const action = getInteractionAction(interactables);
+        
+        if (!action) {
+            addLogMessage('Nothing to interact with here.');
+            return false;
+        }
+        
+        if (action.type === 'attack') {
+            // Attack adjacent enemy
+            const enemy = action.target;
+            const result = executeAttack(gameState.player, enemy);
+            const message = getCombatMessage('Player', enemy.name, result);
+            addLogMessage(message);
+            
+            if (result.hit) {
+                playCombatHitSound(0.3);
+                
+                // Update enemy HP
+                enemy.hp -= result.damage;
+                if (enemy.hp <= 0) {
+                    enemy.isAlive = false;
+                    addLogMessage(`💀 ${enemy.name} defeated!`);
+                    
+                    // Award XP (simplified - just use xpValue from entity)
+                    const xpGained = enemy.xpValue || 50;
+                    addLogMessage(`+${xpGained} XP`);
+                }
+            }
+            
+            // Process enemy turns after player attack
+            processEnemies();
+            updateHUD();
+            
+            return true;
+        }
+        
+        if (action.type === 'pickup') {
+            // Pick up item
+            const item = action.target;
+            
+            // Handle gold separately
+            if (item.type === ITEM_TYPES.GOLD) {
+                gameState = addGold(gameState, item.amount);
+                gameState = removeItemFromWorld(gameState, item.id);
+                addLogMessage(`💰 Picked up ${item.amount} gold!`);
+                return true;
+            }
+            
+            // Try to add to inventory
+            const result = addItemToInventory(gameState, item);
+            gameState = result;
+            
+            if (result.success) {
+                gameState = removeItemFromWorld(gameState, item.id);
+                const letter = getSlotLetter(result.slot);
+                addLogMessage(`📦 Picked up ${item.name || 'item'} (${letter})`);
+            } else {
+                addLogMessage('⚠️ Inventory is full!');
+            }
+            
+            return result.success;
+        }
+        
+        if (action.type === 'descend') {
+            // Descend stairs
+            addLogMessage('⬇️ Descending to the next level...');
+            addLogMessage('(Level transition not yet implemented)');
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get inventory display state
+     * @returns {object} {visible: boolean, items: Array<string>}
+     */
+    function getInventoryState() {
+        return {
+            visible: inventoryVisible,
+            items: getInventoryDisplay(gameState.inventory)
+        };
+    }
+    
+    /**
+     * Toggle inventory display
+     */
+    function toggleInventory() {
+        inventoryVisible = !inventoryVisible;
+        addLogMessage(inventoryVisible ? '📋 Inventory opened' : '📋 Inventory closed');
+    }
+    
+    // Track inventory visibility state
+    let inventoryVisible = false;
+    
     return {
         update,
         dispose,
         getState: () => gameState,
         getCombatLog: () => combatLog,
         getActionLog: () => actionLog,
-        setRotation
+        setRotation,
+        interact,
+        getInventoryState,
+        toggleInventory
     };
 }
