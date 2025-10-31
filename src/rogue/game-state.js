@@ -338,6 +338,15 @@ export function addGold(state, amount) {
  * @returns {object} New state with success flag
  */
 export function addItemToInventory(state, item) {
+    // Validate inventory exists
+    if (!state.inventory || !Array.isArray(state.inventory)) {
+        return {
+            ...state,
+            success: false,
+            slot: null
+        };
+    }
+    
     // Find first empty slot
     for (let i = 0; i < state.inventory.length; i++) {
         if (state.inventory[i] === null) {
