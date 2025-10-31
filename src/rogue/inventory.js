@@ -112,6 +112,15 @@ export function useItem(inventory, slot, state) {
             }
             break;
             
+        case ITEM_TYPES.FOOD:
+            const restoreAmount = item.hungerRestore || 100;
+            newState.player.hunger = Math.min(
+                newState.player.hunger + restoreAmount,
+                newState.player.maxHunger
+            );
+            message = `Ate ${item.name}. Restored ${restoreAmount} hunger!`;
+            break;
+            
         default:
             message = 'Cannot use this item';
             return {

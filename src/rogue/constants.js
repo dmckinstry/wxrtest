@@ -46,7 +46,8 @@ export const PALETTE = {
     SCROLL: 0xFFD700,     // Gold
     SWORD: 0xC0C0C0,      // Silver
     RING: 0xFF8C00,       // Dark orange
-    GOLD: 0xFFD700        // Gold
+    GOLD: 0xFFD700,       // Gold
+    FOOD: 0xFFA500        // Orange
 };
 
 // Enemy type configurations
@@ -124,7 +125,8 @@ export const ITEM_TYPES = {
     POTION: 'potion',
     SCROLL: 'scroll',
     RING: 'ring',
-    GOLD: 'gold'
+    GOLD: 'gold',
+    FOOD: 'food'
 };
 
 // Material properties for low-poly aesthetics

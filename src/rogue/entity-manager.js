@@ -125,6 +125,22 @@ export function createGold(amount) {
 }
 
 /**
+ * Create a food item
+ * @param {string} name - Food name (e.g., 'ration', 'apple', 'bread')
+ * @param {number} hungerRestore - Amount of hunger restored
+ * @returns {object} Food item
+ */
+export function createFood(name, hungerRestore = 100) {
+    return {
+        id: `food_${Date.now()}_${Math.random()}`,
+        type: ITEM_TYPES.FOOD,
+        name: name,
+        hungerRestore: hungerRestore,
+        identified: true
+    };
+}
+
+/**
  * Identify an item
  * @param {object} item - Item to identify
  * @returns {object} Identified item
@@ -156,6 +172,89 @@ export function getItemDisplayName(item) {
  */
 export function isEntityAlive(entity) {
     return entity.hp > 0 && entity.isAlive !== false;
+}
+
+/**
+ * Create an item entity from spawn data
+ * @param {object} spawn - Spawn data {itemType, position, level}
+ * @param {object} rng - Seeded random number generator (optional)
+ * @returns {object} Item entity
+ */
+export function createItemFromSpawn(spawn, rng = null) {
+    const getRandom = () => rng ? rng.next() : Math.random();
+    const getRandomInt = (min, max) => {
+        const rand = getRandom();
+        return Math.floor(rand * (max - min + 1)) + min;
+    };
+    
+    const baseItem = {
+        position: { ...spawn.position },
+        level: spawn.level
+    };
+    
+    switch (spawn.itemType) {
+        case 'weapon': {
+            const weaponTypes = [
+                { name: 'Dagger', damage: [1, 4], bonus: 0 },
+                { name: 'Short Sword', damage: [1, 6], bonus: 1 },
+                { name: 'Long Sword', damage: [1, 8], bonus: 2 },
+                { name: 'Battle Axe', damage: [1, 10], bonus: 1 },
+                { name: 'Mace', damage: [2, 4], bonus: 0 }
+            ];
+            const weapon = weaponTypes[getRandomInt(0, weaponTypes.length - 1)];
+            return { ...baseItem, ...createWeapon(weapon.name, weapon.damage, weapon.bonus) };
+        }
+        
+        case 'armor': {
+            const armorTypes = [
+                { name: 'Leather Armor', acBonus: 1 },
+                { name: 'Chain Mail', acBonus: 3 },
+                { name: 'Plate Mail', acBonus: 5 },
+                { name: 'Shield', acBonus: 2 }
+            ];
+            const armor = armorTypes[getRandomInt(0, armorTypes.length - 1)];
+            return { ...baseItem, ...createArmor(armor.name, armor.acBonus) };
+        }
+        
+        case 'potion': {
+            const potionTypes = [
+                { trueType: 'healing', appearance: 'red potion' },
+                { trueType: 'healing', appearance: 'crimson potion' },
+                { trueType: 'healing', appearance: 'ruby potion' }
+            ];
+            const potion = potionTypes[getRandomInt(0, potionTypes.length - 1)];
+            return { ...baseItem, ...createPotion(potion.trueType, potion.appearance, {}) };
+        }
+        
+        case 'scroll': {
+            const scrollTypes = [
+                { trueType: 'identify', appearance: 'dusty scroll' },
+                { trueType: 'identify', appearance: 'ancient scroll' }
+            ];
+            const scroll = scrollTypes[getRandomInt(0, scrollTypes.length - 1)];
+            return { ...baseItem, ...createScroll(scroll.trueType, scroll.appearance, {}) };
+        }
+        
+        case 'food': {
+            const foodTypes = [
+                { name: 'ration', restore: 150 },
+                { name: 'bread', restore: 100 },
+                { name: 'apple', restore: 50 },
+                { name: 'cheese', restore: 80 },
+                { name: 'dried meat', restore: 120 }
+            ];
+            const food = foodTypes[getRandomInt(0, foodTypes.length - 1)];
+            return { ...baseItem, ...createFood(food.name, food.restore) };
+        }
+        
+        case 'gold': {
+            const amount = getRandomInt(10, 50) * spawn.level;
+            return { ...baseItem, ...createGold(amount) };
+        }
+        
+        default:
+            return { ...baseItem, ...createGold(10) };
+    }
 }
 
 /**

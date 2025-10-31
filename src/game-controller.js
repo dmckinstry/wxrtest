@@ -43,6 +43,7 @@ import {
     createMovementIndicator,
     createEnemy,
     createPlayer,
+    createItem,
     createHUDCanvas
 } from './rogue/render-utils.js';
 import {
@@ -57,7 +58,7 @@ import {
     calculateCameraRotation,
     clampPitch
 } from './rogue/movement.js';
-import { createEnemy as createEnemyEntity, isEntityAlive } from './rogue/entity-manager.js';
+import { createEnemy as createEnemyEntity, isEntityAlive, createItemFromSpawn } from './rogue/entity-manager.js';
 import { executeAttack, processEnemyTurn, getCombatMessage } from './rogue/combat.js';
 import { 
     playFootstepSound,
@@ -88,6 +89,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     // Create scene objects
     let dungeonMeshes = new Map(); // Use Map with position keys instead of array
     let enemyMeshes = new Map();
+    let itemMeshes = new Map();
     let lightMap = new Map();
     let playerMesh = null; // Will be initialized after dungeon load
     
@@ -107,6 +109,10 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         // Clear existing enemy meshes
         enemyMeshes.forEach(mesh => scene.remove(mesh));
         enemyMeshes.clear();
+        
+        // Clear existing item meshes
+        itemMeshes.forEach(mesh => scene.remove(mesh));
+        itemMeshes.clear();
         
         // Clear existing lights
         lightMap.forEach(light => scene.remove(light));
@@ -138,7 +144,9 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         gameState.entities.enemies = dungeon.enemySpawns.map(spawn =>
             createEnemyEntity(spawn.type, spawn.position, newLevel)
         );
-        gameState.entities.items = []; // Clear items for now
+        gameState.entities.items = (dungeon.itemSpawns || []).map(spawn =>
+            createItemFromSpawn(spawn)
+        );
         
         // Build dungeon geometry
         for (let y = 0; y < dungeon.height; y++) {
@@ -185,6 +193,15 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             enemyMeshes.set(enemy.id, mesh);
         }
         
+        // Create item meshes
+        for (const item of gameState.entities.items) {
+            const world = gridToWorld(item.position.x, item.position.y);
+            const mesh = createItem(THREE, item, world.x, world.z);
+            mesh.visible = false; // Hidden until in visible range
+            scene.add(mesh);
+            itemMeshes.set(item.id, mesh);
+        }
+        
         // Update player mesh position
         playerMesh.position.set(
             gameState.player.worldPosition.x,
@@ -202,6 +219,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         // Update visibility
         updateDungeonVisibility();
         updateEnemyVisibility();
+        updateItemVisibility();
         updateLights();
         
         addLogMessage(`📍 Welcome to dungeon level ${newLevel}!`);
@@ -225,6 +243,11 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     // Create entities from spawn data
     gameState.entities.enemies = dungeon.enemySpawns.map(spawn =>
         createEnemyEntity(spawn.type, spawn.position, spawn.level)
+    );
+    
+    // Create items from spawn data
+    gameState.entities.items = (dungeon.itemSpawns || []).map(spawn =>
+        createItemFromSpawn(spawn)
     );
     
     // Build dungeon geometry
@@ -286,6 +309,15 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         mesh.visible = false; // Hidden until in visible range
         scene.add(mesh);
         enemyMeshes.set(enemy.id, mesh);
+    }
+    
+    // Create item meshes
+    for (const item of gameState.entities.items) {
+        const world = gridToWorld(item.position.x, item.position.y);
+        const mesh = createItem(THREE, item, world.x, world.z);
+        mesh.visible = false; // Hidden until in visible range
+        scene.add(mesh);
+        itemMeshes.set(item.id, mesh);
     }
     
     // Create HUD
@@ -409,6 +441,19 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             if (mesh) {
                 const key = `${enemy.position.x},${enemy.position.y}`;
                 mesh.visible = gameState.visibleTiles.has(key) && isEntityAlive(enemy);
+            }
+        }
+    }
+    
+    /**
+     * Update item visibility based on player's visible tiles
+     */
+    function updateItemVisibility() {
+        for (const item of gameState.entities.items) {
+            const mesh = itemMeshes.get(item.id);
+            if (mesh) {
+                const key = `${item.position.x},${item.position.y}`;
+                mesh.visible = gameState.visibleTiles.has(key);
             }
         }
     }
@@ -547,6 +592,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     // Initialize visibility on first frame
     updateDungeonVisibility();
     updateEnemyVisibility();
+    updateItemVisibility();
     updateLights();
     
     // Add initial log message
@@ -581,7 +627,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             y: vrAxes.y !== 0 ? vrAxes.y : kbAxes.y
         };
         
-        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.0, gameState.player.rotation);
+        const moveDelta = calculateMovementDelta(axes, deltaTime, 2.6, gameState.player.rotation);
         const moveDistance = calculateMovementDistance(moveDelta);
         
         // Apply movement if not in combat mode or always allow in exploration
@@ -673,6 +719,9 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         
         // Update enemy visibility
         updateEnemyVisibility();
+        
+        // Update item visibility
+        updateItemVisibility();
         
         // Update room lights
         updateLights();
@@ -767,6 +816,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             if (item.type === ITEM_TYPES.GOLD) {
                 gameState = addGold(gameState, item.amount);
                 gameState = removeItemFromWorld(gameState, item.id);
+                
+                // Remove item mesh from scene
+                const mesh = itemMeshes.get(item.id);
+                if (mesh) {
+                    scene.remove(mesh);
+                    itemMeshes.delete(item.id);
+                }
+                
                 addLogMessage(`💰 Picked up ${item.amount} gold!`);
                 return true;
             }
@@ -777,6 +834,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
             
             if (result.success) {
                 gameState = removeItemFromWorld(gameState, item.id);
+                
+                // Remove item mesh from scene
+                const mesh = itemMeshes.get(item.id);
+                if (mesh) {
+                    scene.remove(mesh);
+                    itemMeshes.delete(item.id);
+                }
+                
                 const letter = getSlotLetter(result.slot);
                 addLogMessage(`📦 Picked up ${item.name || 'item'} (${letter})`);
             } else {
