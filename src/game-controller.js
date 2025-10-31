@@ -85,10 +85,129 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     const seed = customSeed !== null ? customSeed : Date.now();
     let gameState = createInitialState(seed);
     
+    // Create scene objects
+    let dungeonMeshes = new Map(); // Use Map with position keys instead of array
+    let enemyMeshes = new Map();
+    let lightMap = new Map();
+    let playerMesh = null; // Will be initialized after dungeon load
+    
     // Generate initial dungeon
-    const dungeon = generateDungeon(seed, 1);
+    let dungeon = generateDungeon(seed, 1);
     gameState.dungeon = dungeon;
     
+    /**
+     * Clear and rebuild dungeon for new level
+     * @param {number} newLevel - The new dungeon level
+     */
+    function loadNewDungeonLevel(newLevel) {
+        // Clear existing dungeon meshes
+        dungeonMeshes.forEach(mesh => scene.remove(mesh));
+        dungeonMeshes.clear();
+        
+        // Clear existing enemy meshes
+        enemyMeshes.forEach(mesh => scene.remove(mesh));
+        enemyMeshes.clear();
+        
+        // Clear existing lights
+        lightMap.forEach(light => scene.remove(light));
+        lightMap.clear();
+        
+        // Generate new dungeon
+        dungeon = generateDungeon(seed, newLevel);
+        gameState.dungeon = dungeon;
+        gameState.dungeon.level = newLevel;
+        
+        // Update statistics
+        gameState.statistics.deepestLevel = Math.max(gameState.statistics.deepestLevel, newLevel);
+        
+        // Set player starting position
+        const startPos = getPlayerStartPosition(dungeon);
+        gameState.player.position = startPos;
+        const startWorld = gridToWorld(startPos.x, startPos.y);
+        gameState.player.worldPosition = { 
+            x: startWorld.x, 
+            y: 1.6, 
+            z: startWorld.z 
+        };
+        
+        // Reset visibility
+        gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos);
+        gameState.exploredTiles = updateExploredTiles(new Set(), gameState.visibleTiles);
+        
+        // Create entities from spawn data
+        gameState.entities.enemies = dungeon.enemySpawns.map(spawn =>
+            createEnemyEntity(spawn.type, spawn.position, newLevel)
+        );
+        gameState.entities.items = []; // Clear items for now
+        
+        // Build dungeon geometry
+        for (let y = 0; y < dungeon.height; y++) {
+            for (let x = 0; x < dungeon.width; x++) {
+                const tile = dungeon.grid[y][x];
+                const world = gridToWorld(x, y);
+                const key = `${x},${y}`;
+                
+                if (tile === 'wall') {
+                    const wall = createWall(THREE, world.x, world.z);
+                    scene.add(wall);
+                    dungeonMeshes.set(key, wall);
+                } else if (tile === 'floor' || tile === 'door') {
+                    const floor = createFloor(THREE, world.x, world.z, 'hidden');
+                    scene.add(floor);
+                    dungeonMeshes.set(key, floor);
+                } else if (tile === 'stairs_down') {
+                    const floor = createFloor(THREE, world.x, world.z, 'hidden');
+                    scene.add(floor);
+                    dungeonMeshes.set(key, floor);
+                    
+                    const stairs = createStairsDown(THREE, world.x, world.z);
+                    scene.add(stairs);
+                    dungeonMeshes.set(`${key}_stairs`, stairs);
+                }
+            }
+        }
+        
+        // Add room lights
+        for (const room of dungeon.rooms) {
+            const center = gridToWorld(room.center.x, room.center.y);
+            const light = createRoomLight(THREE, center.x, center.z, false);
+            scene.add(light);
+            lightMap.set(`${room.center.x},${room.center.y}`, light);
+        }
+        
+        // Create enemy meshes
+        for (const enemy of gameState.entities.enemies) {
+            const config = ENEMY_TYPES[enemy.type];
+            const world = gridToWorld(enemy.position.x, enemy.position.y);
+            const mesh = createEnemy(THREE, config, world.x, world.z);
+            mesh.visible = false; // Hidden until in visible range
+            scene.add(mesh);
+            enemyMeshes.set(enemy.id, mesh);
+        }
+        
+        // Update player mesh position
+        playerMesh.position.set(
+            gameState.player.worldPosition.x,
+            0,
+            gameState.player.worldPosition.z
+        );
+        
+        // Update camera position
+        camera.position.set(
+            gameState.player.worldPosition.x,
+            1.6,
+            gameState.player.worldPosition.z
+        );
+        
+        // Update visibility
+        updateDungeonVisibility();
+        updateEnemyVisibility();
+        updateLights();
+        
+        addLogMessage(`📍 Welcome to dungeon level ${newLevel}!`);
+    }
+    
+    // Initial dungeon load
     // Set player starting position
     const startPos = getPlayerStartPosition(dungeon);
     gameState.player.position = startPos;
@@ -107,11 +226,6 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     gameState.entities.enemies = dungeon.enemySpawns.map(spawn =>
         createEnemyEntity(spawn.type, spawn.position, spawn.level)
     );
-    
-    // Create scene objects
-    const dungeonMeshes = new Map(); // Use Map with position keys instead of array
-    const enemyMeshes = new Map();
-    const lightMap = new Map();
     
     // Build dungeon geometry
     for (let y = 0; y < dungeon.height; y++) {
@@ -149,7 +263,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     }
     
     // Create player mesh
-    const playerMesh = createPlayer(THREE);
+    playerMesh = createPlayer(THREE);
     playerMesh.position.set(
         gameState.player.worldPosition.x,
         0,
@@ -674,8 +788,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         
         if (action.type === 'descend') {
             // Descend stairs
+            const currentLevel = gameState.dungeon.level;
+            const nextLevel = currentLevel + 1;
+            
             addLogMessage('⬇️ Descending to the next level...');
-            addLogMessage('(Level transition not yet implemented)');
+            
+            // Load new dungeon level
+            loadNewDungeonLevel(nextLevel);
+            
             return true;
         }
         

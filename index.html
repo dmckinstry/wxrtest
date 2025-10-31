@@ -36,6 +36,27 @@
         #info .log-entry:last-child {
             border-bottom: none;
         }
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            min-width: 200px;
+            font-size: 14px;
+        }
+        #stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #00ff00;
+        }
+        #stats .stat-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
         #inventory-display {
             display: none;
             position: absolute;
@@ -96,6 +117,20 @@
         <h3>Action Log</h3>
         <div id="log-messages">
             <div class="log-entry">Initializing game...</div>
+        </div>
+    </div>
+    <div id="stats">
+        <h3>Statistics</h3>
+        <div id="stats-content">
+            <div class="stat-entry">HP: --/--</div>
+            <div class="stat-entry">Hunger: --</div>
+            <div class="stat-entry">Level: --</div>
+            <div class="stat-entry">XP: --/--</div>
+            <div class="stat-entry">AC: --</div>
+            <div class="stat-entry">Dungeon Level: --</div>
+            <div class="stat-entry">Kills: --</div>
+            <div class="stat-entry">Gold: --</div>
+            <div class="stat-entry">Turn: --</div>
         </div>
     </div>
     <div id="inventory-display">
@@ -281,6 +316,33 @@
             }
         }
         
+        function updateStatsDisplay() {
+            if (!gameController) return;
+            
+            const state = gameController.getState();
+            const statsContainer = document.getElementById('stats-content');
+            
+            if (statsContainer) {
+                const hpPercent = state.player.hp / state.player.maxHp;
+                const hpColor = hpPercent > 0.6 ? '#00ff00' : hpPercent > 0.3 ? '#ffff00' : '#ff0000';
+                
+                const hungerPercent = state.player.hunger / state.player.maxHunger;
+                const hungerColor = hungerPercent > 0.5 ? '#00ff00' : hungerPercent > 0.2 ? '#ffaa00' : '#ff0000';
+                
+                statsContainer.innerHTML = `
+                    <div class="stat-entry" style="color: ${hpColor}">HP: ${state.player.hp}/${state.player.maxHp}</div>
+                    <div class="stat-entry" style="color: ${hungerColor}">Hunger: ${state.player.hunger}</div>
+                    <div class="stat-entry">Level: ${state.player.level}</div>
+                    <div class="stat-entry">XP: ${state.player.xp}/${state.player.xpToNext}</div>
+                    <div class="stat-entry">AC: ${state.player.ac}</div>
+                    <div class="stat-entry">Dungeon Level: ${state.dungeon.level}</div>
+                    <div class="stat-entry">Kills: ${state.statistics.kills}</div>
+                    <div class="stat-entry">Gold: ${state.statistics.goldCollected}</div>
+                    <div class="stat-entry">Turn: ${state.turnCount}</div>
+                `;
+            }
+        }
+        
         function setupKeyboardControls() {
             window.addEventListener('keydown', (event) => {
                 keyboardState[event.code] = true;
@@ -405,6 +467,7 @@
             if (gameController) {
                 gameController.update();
                 updateInfoText(); // Update action log display
+                updateStatsDisplay(); // Update stats display
             }
 
             renderer.render(scene, camera);
