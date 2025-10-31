@@ -138,8 +138,11 @@
         // Rotation speed for keyboard (radians per second)
         const keyboardRotationSpeed = Math.PI; // 180 degrees per second
         
-        // VR controller button mappings for Quest
+        // VR controller button mappings for Quest controllers
+        // Based on WebXR Gamepad API for Oculus Touch controllers
+        // https://immersive-web.github.io/webxr-gamepads-module/
         const QUEST_A_BUTTON_INDEX = 4; // A button on right Quest controller
+        const QUEST_TRIGGER_INDEX = 0;  // Trigger button (handled via selectstart event)
 
         init();
         animate();
