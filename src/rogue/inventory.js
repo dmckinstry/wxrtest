@@ -113,12 +113,19 @@ export function useItem(inventory, slot, state) {
             break;
             
         case ITEM_TYPES.FOOD:
-            const restoreAmount = item.hungerRestore || 100;
+            const hungerAmount = item.hungerRestore || 100;
             newState.player.hunger = Math.min(
-                newState.player.hunger + restoreAmount,
+                newState.player.hunger + hungerAmount,
                 newState.player.maxHunger
             );
-            message = `Ate ${item.name}. Restored ${restoreAmount} hunger!`;
+            
+            // Food also restores HP (generally half of hunger restoration)
+            const hpAmount = Math.floor(hungerAmount / 10);
+            newState.player.hp = Math.min(
+                newState.player.hp + hpAmount,
+                newState.player.maxHp
+            );
+            message = `Ate ${item.name}. Restored ${hungerAmount} hunger and ${hpAmount} HP!`;
             break;
             
         case ITEM_TYPES.WEAPON:

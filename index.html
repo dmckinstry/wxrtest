@@ -127,6 +127,8 @@
             <div class="stat-entry">Level: --</div>
             <div class="stat-entry">XP: --/--</div>
             <div class="stat-entry">AC: --</div>
+            <div class="stat-entry">Weapon: --</div>
+            <div class="stat-entry">Armor: --</div>
             <div class="stat-entry">Dungeon Level: --</div>
             <div class="stat-entry">Kills: --</div>
             <div class="stat-entry">Gold: --</div>
@@ -330,12 +332,18 @@
                 const hungerPercent = state.player.hunger / state.player.maxHunger;
                 const hungerColor = hungerPercent > 0.5 ? '#00ff00' : hungerPercent > 0.2 ? '#ffaa00' : '#ff0000';
                 
+                // Get equipped items
+                const weaponName = state.player.weapon ? state.player.weapon.name : 'none';
+                const armorName = state.player.armor ? state.player.armor.name : 'none';
+                
                 statsContainer.innerHTML = `
                     <div class="stat-entry" style="color: ${hpColor}">HP: ${state.player.hp}/${state.player.maxHp}</div>
                     <div class="stat-entry" style="color: ${hungerColor}">Hunger: ${state.player.hunger}</div>
                     <div class="stat-entry">Level: ${state.player.level}</div>
                     <div class="stat-entry">XP: ${state.player.xp}/${state.player.xpToNext}</div>
                     <div class="stat-entry">AC: ${state.player.ac}</div>
+                    <div class="stat-entry">Weapon: ${weaponName}</div>
+                    <div class="stat-entry">Armor: ${armorName}</div>
                     <div class="stat-entry">Dungeon Level: ${state.dungeon.level}</div>
                     <div class="stat-entry">Kills: ${state.statistics.kills}</div>
                     <div class="stat-entry">Gold: ${state.statistics.goldCollected}</div>
@@ -366,29 +374,28 @@
                     // Inventory is open - handle inventory actions and prevent movement
                     event.preventDefault(); // Prevent default browser behavior
                     
-                    // Check if pressing a-z for slot selection
-                    const keyChar = event.key.toLowerCase();
-                    if (keyChar.length === 1 && keyChar >= 'a' && keyChar <= 'z') {
-                        const slot = keyChar.charCodeAt(0) - 'a'.charCodeAt(0);
-                        pendingInventorySlot = slot;
-                        console.log(`Selected slot ${keyChar} (${slot})`);
-                        updateInventoryDisplay(); // Update display to show selection
-                        // Don't set keyboardState for inventory letter keys
-                    } else if (pendingInventorySlot !== null) {
-                        // Execute action on selected slot
-                        if (event.code === 'KeyU') {
-                            gameController.useInventoryItem(pendingInventorySlot);
-                            updateInventoryDisplay();
-                            pendingInventorySlot = null;
-                        } else if (event.code === 'KeyD') {
-                            gameController.dropInventoryItem(pendingInventorySlot);
-                            updateInventoryDisplay();
-                            pendingInventorySlot = null;
-                        }
-                        // Don't set keyboardState for action keys when inventory is open
+                    // Check for action keys first (U and D)
+                    if (pendingInventorySlot !== null && event.code === 'KeyU') {
+                        gameController.useInventoryItem(pendingInventorySlot);
+                        updateInventoryDisplay();
+                        pendingInventorySlot = null;
+                    } else if (pendingInventorySlot !== null && event.code === 'KeyD') {
+                        gameController.dropInventoryItem(pendingInventorySlot);
+                        updateInventoryDisplay();
+                        pendingInventorySlot = null;
                     } else {
-                        // Other keys while inventory is open - allow them but don't process for movement
-                        keyboardState[event.code] = true;
+                        // Check if pressing a-z for slot selection (excluding u and d which are action keys)
+                        const keyChar = event.key.toLowerCase();
+                        if (keyChar.length === 1 && keyChar >= 'a' && keyChar <= 'z' && keyChar !== 'u' && keyChar !== 'd') {
+                            const slot = keyChar.charCodeAt(0) - 'a'.charCodeAt(0);
+                            pendingInventorySlot = slot;
+                            console.log(`Selected slot ${keyChar} (${slot})`);
+                            updateInventoryDisplay(); // Update display to show selection
+                            // Don't set keyboardState for inventory letter keys
+                        } else if (keyChar !== 'u' && keyChar !== 'd') {
+                            // Other keys while inventory is open - allow them but don't process for movement
+                            keyboardState[event.code] = true;
+                        }
                     }
                 } else {
                     // Normal gameplay - set keyboard state for movement
