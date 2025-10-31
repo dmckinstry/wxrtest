@@ -190,19 +190,38 @@
                     gameController.interact();
                 }
             });
+        }
+        
+        // Track previous button states to detect button press events
+        let previousButtonStates = {
+            aButton: false
+        };
+        
+        function pollGamepadButtons() {
+            if (!renderer.xr.isPresenting) return;
             
-            // Handle 'A' button (button index 4) for inventory on right controller
-            controller2.addEventListener('squeezestart', () => {
-                if (gameController) {
-                    gameController.toggleInventory();
-                    updateInventoryDisplay();
+            const session = renderer.xr.getSession();
+            if (!session) return;
+            
+            // Get gamepad from input sources
+            for (const source of session.inputSources) {
+                if (source.gamepad) {
+                    // Button 4 is typically the 'A' button on Quest right controller
+                    if (source.handedness === 'right' && source.gamepad.buttons.length > 4) {
+                        const aButton = source.gamepad.buttons[4];
+                        
+                        // Detect button press (not held)
+                        if (aButton.pressed && !previousButtonStates.aButton) {
+                            if (gameController) {
+                                gameController.toggleInventory();
+                                updateInventoryDisplay();
+                            }
+                        }
+                        
+                        previousButtonStates.aButton = aButton.pressed;
+                    }
                 }
-            });
-            
-            // Also check for standard gamepad buttons
-            window.addEventListener('gamepadconnected', (event) => {
-                console.log('Gamepad connected:', event.gamepad.id);
-            });
+            }
         }
         
         function updateInfoText() {
@@ -339,6 +358,9 @@
                 if (gameController) {
                     gameController.setRotation(yaw);
                 }
+            } else {
+                // In VR mode, poll for gamepad buttons
+                pollGamepadButtons();
             }
             
             // Update game
