@@ -36,6 +36,59 @@
         #info .log-entry:last-child {
             border-bottom: none;
         }
+        #stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 100;
+            min-width: 200px;
+            font-size: 14px;
+        }
+        #stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #00ff00;
+        }
+        #stats .stat-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        #inventory-display {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            min-width: 400px;
+            max-height: 500px;
+            overflow-y: auto;
+            z-index: 200;
+            font-family: monospace;
+        }
+        #inventory-display h2 {
+            margin-top: 0;
+            color: #00ff00;
+        }
+        #inventory-items {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #inventory-display .footer {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #00ff00;
+            font-size: 12px;
+            color: #888;
+        }
         #vr-button {
             position: absolute;
             bottom: 20px;
@@ -64,6 +117,28 @@
         <h3>Action Log</h3>
         <div id="log-messages">
             <div class="log-entry">Initializing game...</div>
+        </div>
+    </div>
+    <div id="stats">
+        <h3>Statistics</h3>
+        <div id="stats-content">
+            <div class="stat-entry">HP: --/--</div>
+            <div class="stat-entry">Hunger: --</div>
+            <div class="stat-entry">Level: --</div>
+            <div class="stat-entry">XP: --/--</div>
+            <div class="stat-entry">AC: --</div>
+            <div class="stat-entry">Dungeon Level: --</div>
+            <div class="stat-entry">Kills: --</div>
+            <div class="stat-entry">Gold: --</div>
+            <div class="stat-entry">Turn: --</div>
+        </div>
+    </div>
+    <div id="inventory-display">
+        <h2>Inventory</h2>
+        <div id="inventory-items">
+        </div>
+        <div class="footer">
+            Press 'i' or 'A' button to close
         </div>
     </div>
     <button id="vr-button">Enter VR</button>
@@ -97,6 +172,12 @@
         
         // Rotation speed for keyboard (radians per second)
         const keyboardRotationSpeed = Math.PI; // 180 degrees per second
+        
+        // VR controller button mappings for Quest controllers
+        // Based on WebXR Gamepad API for Oculus Touch controllers
+        // https://immersive-web.github.io/webxr-gamepads-module/
+        const QUEST_A_BUTTON_INDEX = 4; // A button on right Quest controller
+        const QUEST_TRIGGER_INDEX = 0;  // Trigger button (handled via selectstart event)
 
         init();
         animate();
@@ -155,6 +236,9 @@
 
             controller1.add(new THREE.Line(geometry, material));
             controller2.add(new THREE.Line(geometry, material));
+            
+            // Setup VR controller button handlers
+            setupControllerButtons();
 
             // Initialize game with keyboard state
             gameController = createGame(THREE, scene, camera, renderer, null, keyboardState);
@@ -170,6 +254,47 @@
             
             // Setup mouse controls for desktop mode
             setupMouseControls();
+        }
+        
+        function setupControllerButtons() {
+            // Handle right controller (index 1) trigger button for interaction
+            controller2.addEventListener('selectstart', () => {
+                if (gameController) {
+                    gameController.interact();
+                }
+            });
+        }
+        
+        // Track previous button states to detect button press events
+        let previousButtonStates = {
+            aButton: false
+        };
+        
+        function pollGamepadButtons() {
+            if (!renderer.xr.isPresenting) return;
+            
+            const session = renderer.xr.getSession();
+            if (!session) return;
+            
+            // Get gamepad from input sources
+            for (const source of session.inputSources) {
+                if (source.gamepad) {
+                    // Check for A button on Quest right controller
+                    if (source.handedness === 'right' && source.gamepad.buttons.length > QUEST_A_BUTTON_INDEX) {
+                        const aButton = source.gamepad.buttons[QUEST_A_BUTTON_INDEX];
+                        
+                        // Detect button press (not held)
+                        if (aButton.pressed && !previousButtonStates.aButton) {
+                            if (gameController) {
+                                gameController.toggleInventory();
+                                updateInventoryDisplay();
+                            }
+                        }
+                        
+                        previousButtonStates.aButton = aButton.pressed;
+                    }
+                }
+            }
         }
         
         function updateInfoText() {
@@ -191,9 +316,48 @@
             }
         }
         
+        function updateStatsDisplay() {
+            if (!gameController) return;
+            
+            const state = gameController.getState();
+            const statsContainer = document.getElementById('stats-content');
+            
+            if (statsContainer) {
+                const hpPercent = state.player.hp / state.player.maxHp;
+                const hpColor = hpPercent > 0.6 ? '#00ff00' : hpPercent > 0.3 ? '#ffff00' : '#ff0000';
+                
+                const hungerPercent = state.player.hunger / state.player.maxHunger;
+                const hungerColor = hungerPercent > 0.5 ? '#00ff00' : hungerPercent > 0.2 ? '#ffaa00' : '#ff0000';
+                
+                statsContainer.innerHTML = `
+                    <div class="stat-entry" style="color: ${hpColor}">HP: ${state.player.hp}/${state.player.maxHp}</div>
+                    <div class="stat-entry" style="color: ${hungerColor}">Hunger: ${state.player.hunger}</div>
+                    <div class="stat-entry">Level: ${state.player.level}</div>
+                    <div class="stat-entry">XP: ${state.player.xp}/${state.player.xpToNext}</div>
+                    <div class="stat-entry">AC: ${state.player.ac}</div>
+                    <div class="stat-entry">Dungeon Level: ${state.dungeon.level}</div>
+                    <div class="stat-entry">Kills: ${state.statistics.kills}</div>
+                    <div class="stat-entry">Gold: ${state.statistics.goldCollected}</div>
+                    <div class="stat-entry">Turn: ${state.turnCount}</div>
+                `;
+            }
+        }
+        
         function setupKeyboardControls() {
             window.addEventListener('keydown', (event) => {
                 keyboardState[event.code] = true;
+                
+                // Handle special keys
+                if (event.code === 'Enter' || event.code === 'NumpadEnter') {
+                    if (gameController) {
+                        gameController.interact();
+                    }
+                } else if (event.code === 'KeyI') {
+                    if (gameController) {
+                        gameController.toggleInventory();
+                        updateInventoryDisplay();
+                    }
+                }
             });
             
             window.addEventListener('keyup', (event) => {
@@ -201,11 +365,37 @@
             });
         }
         
+        function updateInventoryDisplay() {
+            if (!gameController) return;
+            
+            const invState = gameController.getInventoryState();
+            const invDisplay = document.getElementById('inventory-display');
+            const invItems = document.getElementById('inventory-items');
+            
+            if (invDisplay && invItems) {
+                if (invState.visible) {
+                    invDisplay.style.display = 'block';
+                    invItems.innerHTML = invState.items
+                        .map(item => `<div style="padding: 2px 0;">${item}</div>`)
+                        .join('');
+                } else {
+                    invDisplay.style.display = 'none';
+                }
+            }
+        }
+        
         function setupMouseControls() {
             // Request pointer lock on canvas click
             renderer.domElement.addEventListener('click', () => {
                 if (!renderer.xr.isPresenting) {
-                    renderer.domElement.requestPointerLock();
+                    if (document.pointerLockElement === renderer.domElement) {
+                        // Already locked - handle interaction on left click
+                        if (gameController) {
+                            gameController.interact();
+                        }
+                    } else {
+                        renderer.domElement.requestPointerLock();
+                    }
                 }
             });
             
@@ -268,12 +458,16 @@
                 if (gameController) {
                     gameController.setRotation(yaw);
                 }
+            } else {
+                // In VR mode, poll for gamepad buttons
+                pollGamepadButtons();
             }
             
             // Update game
             if (gameController) {
                 gameController.update();
                 updateInfoText(); // Update action log display
+                updateStatsDisplay(); // Update stats display
             }
 
             renderer.render(scene, camera);

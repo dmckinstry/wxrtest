@@ -330,3 +330,57 @@ export function addGold(state, amount) {
         }
     };
 }
+
+/**
+ * Add item to player inventory
+ * @param {object} state - Current game state
+ * @param {object} item - Item to add
+ * @returns {object} New state with success flag
+ */
+export function addItemToInventory(state, item) {
+    // Validate inventory exists
+    if (!state.inventory || !Array.isArray(state.inventory)) {
+        return {
+            ...state,
+            success: false,
+            slot: null
+        };
+    }
+    
+    // Find first empty slot
+    for (let i = 0; i < state.inventory.length; i++) {
+        if (state.inventory[i] === null) {
+            const newInventory = [...state.inventory];
+            newInventory[i] = item;
+            return {
+                ...state,
+                inventory: newInventory,
+                success: true,
+                slot: i
+            };
+        }
+    }
+    
+    // Inventory full
+    return {
+        ...state,
+        success: false,
+        slot: null
+    };
+}
+
+/**
+ * Remove item from world
+ * @param {object} state - Current game state
+ * @param {string} itemId - Item ID to remove
+ * @returns {object} New state
+ */
+export function removeItemFromWorld(state, itemId) {
+    return {
+        ...state,
+        entities: {
+            ...state.entities,
+            items: state.entities.items.filter(item => item.id !== itemId)
+        }
+    };
+}

@@ -7,7 +7,8 @@ import {
     MOVEMENT_THRESHOLD,
     COMBAT_DETECTION_RADIUS,
     ENEMY_TYPES,
-    PALETTE
+    PALETTE,
+    ITEM_TYPES
 } from './rogue/constants.js';
 import { 
     createInitialState,
@@ -16,7 +17,10 @@ import {
     updatePlayerRotation,
     damagePlayer,
     setCombatMode,
-    updateAccumulatedMovement
+    updateAccumulatedMovement,
+    addItemToInventory,
+    removeItemFromWorld,
+    addGold
 } from './rogue/game-state.js';
 import { advanceTurn, checkTurnAdvancement } from './rogue/turn-manager.js';
 import { 
@@ -60,6 +64,11 @@ import {
     playCombatHitSound,
     createAmbientDrone
 } from './rogue/audio-generator.js';
+import {
+    findInteractablesAtPosition,
+    getInteractionAction
+} from './rogue/interaction.js';
+import { getInventoryDisplay, getSlotLetter } from './rogue/inventory.js';
 
 /**
  * Create and initialize the game
@@ -76,10 +85,129 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     const seed = customSeed !== null ? customSeed : Date.now();
     let gameState = createInitialState(seed);
     
+    // Create scene objects
+    let dungeonMeshes = new Map(); // Use Map with position keys instead of array
+    let enemyMeshes = new Map();
+    let lightMap = new Map();
+    let playerMesh = null; // Will be initialized after dungeon load
+    
     // Generate initial dungeon
-    const dungeon = generateDungeon(seed, 1);
+    let dungeon = generateDungeon(seed, 1);
     gameState.dungeon = dungeon;
     
+    /**
+     * Clear and rebuild dungeon for new level
+     * @param {number} newLevel - The new dungeon level
+     */
+    function loadNewDungeonLevel(newLevel) {
+        // Clear existing dungeon meshes
+        dungeonMeshes.forEach(mesh => scene.remove(mesh));
+        dungeonMeshes.clear();
+        
+        // Clear existing enemy meshes
+        enemyMeshes.forEach(mesh => scene.remove(mesh));
+        enemyMeshes.clear();
+        
+        // Clear existing lights
+        lightMap.forEach(light => scene.remove(light));
+        lightMap.clear();
+        
+        // Generate new dungeon
+        dungeon = generateDungeon(seed, newLevel);
+        gameState.dungeon = dungeon;
+        gameState.dungeon.level = newLevel;
+        
+        // Update statistics
+        gameState.statistics.deepestLevel = Math.max(gameState.statistics.deepestLevel, newLevel);
+        
+        // Set player starting position
+        const startPos = getPlayerStartPosition(dungeon);
+        gameState.player.position = startPos;
+        const startWorld = gridToWorld(startPos.x, startPos.y);
+        gameState.player.worldPosition = { 
+            x: startWorld.x, 
+            y: 1.6, 
+            z: startWorld.z 
+        };
+        
+        // Reset visibility
+        gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos);
+        gameState.exploredTiles = updateExploredTiles(new Set(), gameState.visibleTiles);
+        
+        // Create entities from spawn data
+        gameState.entities.enemies = dungeon.enemySpawns.map(spawn =>
+            createEnemyEntity(spawn.type, spawn.position, newLevel)
+        );
+        gameState.entities.items = []; // Clear items for now
+        
+        // Build dungeon geometry
+        for (let y = 0; y < dungeon.height; y++) {
+            for (let x = 0; x < dungeon.width; x++) {
+                const tile = dungeon.grid[y][x];
+                const world = gridToWorld(x, y);
+                const key = `${x},${y}`;
+                
+                if (tile === 'wall') {
+                    const wall = createWall(THREE, world.x, world.z);
+                    scene.add(wall);
+                    dungeonMeshes.set(key, wall);
+                } else if (tile === 'floor' || tile === 'door') {
+                    const floor = createFloor(THREE, world.x, world.z, 'hidden');
+                    scene.add(floor);
+                    dungeonMeshes.set(key, floor);
+                } else if (tile === 'stairs_down') {
+                    const floor = createFloor(THREE, world.x, world.z, 'hidden');
+                    scene.add(floor);
+                    dungeonMeshes.set(key, floor);
+                    
+                    const stairs = createStairsDown(THREE, world.x, world.z);
+                    scene.add(stairs);
+                    dungeonMeshes.set(`${key}_stairs`, stairs);
+                }
+            }
+        }
+        
+        // Add room lights
+        for (const room of dungeon.rooms) {
+            const center = gridToWorld(room.center.x, room.center.y);
+            const light = createRoomLight(THREE, center.x, center.z, false);
+            scene.add(light);
+            lightMap.set(`${room.center.x},${room.center.y}`, light);
+        }
+        
+        // Create enemy meshes
+        for (const enemy of gameState.entities.enemies) {
+            const config = ENEMY_TYPES[enemy.type];
+            const world = gridToWorld(enemy.position.x, enemy.position.y);
+            const mesh = createEnemy(THREE, config, world.x, world.z);
+            mesh.visible = false; // Hidden until in visible range
+            scene.add(mesh);
+            enemyMeshes.set(enemy.id, mesh);
+        }
+        
+        // Update player mesh position
+        playerMesh.position.set(
+            gameState.player.worldPosition.x,
+            0,
+            gameState.player.worldPosition.z
+        );
+        
+        // Update camera position
+        camera.position.set(
+            gameState.player.worldPosition.x,
+            1.6,
+            gameState.player.worldPosition.z
+        );
+        
+        // Update visibility
+        updateDungeonVisibility();
+        updateEnemyVisibility();
+        updateLights();
+        
+        addLogMessage(`📍 Welcome to dungeon level ${newLevel}!`);
+    }
+    
+    // Initial dungeon load
     // Set player starting position
     const startPos = getPlayerStartPosition(dungeon);
     gameState.player.position = startPos;
@@ -98,11 +226,6 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     gameState.entities.enemies = dungeon.enemySpawns.map(spawn =>
         createEnemyEntity(spawn.type, spawn.position, spawn.level)
     );
-    
-    // Create scene objects
-    const dungeonMeshes = new Map(); // Use Map with position keys instead of array
-    const enemyMeshes = new Map();
-    const lightMap = new Map();
     
     // Build dungeon geometry
     for (let y = 0; y < dungeon.height; y++) {
@@ -140,7 +263,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     }
     
     // Create player mesh
-    const playerMesh = createPlayer(THREE);
+    playerMesh = createPlayer(THREE);
     playerMesh.position.set(
         gameState.player.worldPosition.x,
         0,
@@ -230,12 +353,24 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 const key = `${x},${y}`;
                 const tile = dungeon.grid[y][x];
                 
-                if (tile === 'wall') {
-                    continue;
-                }
-                
                 const visible = gameState.visibleTiles.has(key);
                 const explored = gameState.exploredTiles.has(key);
+                
+                // Handle walls - only visible if explored or currently visible
+                if (tile === 'wall') {
+                    const meshOrGroup = dungeonMeshes.get(key);
+                    if (meshOrGroup) {
+                        meshOrGroup.visible = visible || explored;
+                        
+                        // Darken explored walls that are not currently visible
+                        const actualMesh = meshOrGroup.userData?.mesh || meshOrGroup;
+                        if (actualMesh.material) {
+                            const color = visible ? PALETTE.WALL : PALETTE.EXPLORED;
+                            actualMesh.material.color.setHex(color);
+                        }
+                    }
+                    continue;
+                }
                 
                 const meshOrGroup = dungeonMeshes.get(key);
                 if (meshOrGroup) {
@@ -572,12 +707,132 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         gameState = updatePlayerRotation(gameState, rotation);
     }
     
+    /**
+     * Handle player interaction with the environment
+     * @returns {boolean} True if an interaction was performed
+     */
+    function interact() {
+        if (gameState.gameOver) return false;
+        
+        const position = gameState.player.position;
+        const tile = dungeon.grid[position.y]?.[position.x];
+        
+        const interactables = findInteractablesAtPosition(
+            position,
+            gameState.entities,
+            tile
+        );
+        
+        const action = getInteractionAction(interactables);
+        
+        if (!action) {
+            addLogMessage('Nothing to interact with here.');
+            return false;
+        }
+        
+        if (action.type === 'attack') {
+            // Attack adjacent enemy
+            const enemy = action.target;
+            const result = executeAttack(gameState.player, enemy);
+            const message = getCombatMessage('Player', enemy.name, result);
+            addLogMessage(message);
+            
+            if (result.hit) {
+                playCombatHitSound(0.3);
+                
+                // Update enemy HP
+                enemy.hp -= result.damage;
+                if (enemy.hp <= 0) {
+                    enemy.isAlive = false;
+                    addLogMessage(`💀 ${enemy.name} defeated!`);
+                    
+                    // Award XP (simplified - just use xpValue from entity)
+                    const xpGained = enemy.xpValue || 50;
+                    addLogMessage(`+${xpGained} XP`);
+                }
+            }
+            
+            // Process enemy turns after player attack
+            processEnemies();
+            updateHUD();
+            
+            return true;
+        }
+        
+        if (action.type === 'pickup') {
+            // Pick up item
+            const item = action.target;
+            
+            // Handle gold separately
+            if (item.type === ITEM_TYPES.GOLD) {
+                gameState = addGold(gameState, item.amount);
+                gameState = removeItemFromWorld(gameState, item.id);
+                addLogMessage(`💰 Picked up ${item.amount} gold!`);
+                return true;
+            }
+            
+            // Try to add to inventory
+            const result = addItemToInventory(gameState, item);
+            gameState = result;
+            
+            if (result.success) {
+                gameState = removeItemFromWorld(gameState, item.id);
+                const letter = getSlotLetter(result.slot);
+                addLogMessage(`📦 Picked up ${item.name || 'item'} (${letter})`);
+            } else {
+                addLogMessage('⚠️ Inventory is full!');
+            }
+            
+            return result.success;
+        }
+        
+        if (action.type === 'descend') {
+            // Descend stairs
+            const currentLevel = gameState.dungeon.level;
+            const nextLevel = currentLevel + 1;
+            
+            addLogMessage('⬇️ Descending to the next level...');
+            
+            // Load new dungeon level
+            loadNewDungeonLevel(nextLevel);
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get inventory display state
+     * @returns {object} {visible: boolean, items: Array<string>}
+     */
+    function getInventoryState() {
+        return {
+            visible: inventoryVisible,
+            items: getInventoryDisplay(gameState.inventory)
+        };
+    }
+    
+    /**
+     * Toggle inventory display
+     */
+    function toggleInventory() {
+        inventoryVisible = !inventoryVisible;
+        addLogMessage(inventoryVisible ? '📋 Inventory opened' : '📋 Inventory closed');
+    }
+    
+    // Track inventory visibility state
+    let inventoryVisible = false;
+    
     return {
         update,
         dispose,
         getState: () => gameState,
         getCombatLog: () => combatLog,
         getActionLog: () => actionLog,
-        setRotation
+        setRotation,
+        interact,
+        getInventoryState,
+        toggleInventory
     };
 }
