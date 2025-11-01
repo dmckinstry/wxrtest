@@ -40,13 +40,20 @@ export const PALETTE = {
     SKELETON: 0xF0E68C,   // Khaki/bone yellow
     SLIME: 0x32CD32,      // Lime green
     DRAGON: 0xFF4500,     // Orange red
+    TROLL: 0x8B4513,      // Saddle brown
+    KOBOLD: 0xDDA0DD,     // Plum
+    THUG: 0x696969,       // Dim gray
+    GOLEM: 0x708090,      // Slate gray
+    GIANT_SPIDER: 0x800080, // Purple
+    RAT: 0x8B7355,        // Brown
     
     // Items
     POTION: 0xFF00FF,     // Magenta
     SCROLL: 0xFFD700,     // Gold
     SWORD: 0xC0C0C0,      // Silver
     RING: 0xFF8C00,       // Dark orange
-    GOLD: 0xFFD700        // Gold
+    GOLD: 0xFFD700,       // Gold
+    FOOD: 0xFFA500        // Orange
 };
 
 // Enemy type configurations
@@ -98,6 +105,79 @@ export const ENEMY_TYPES = {
         xpValue: 500,
         spawnDepth: 7, // Spawns from level 7+
         spawnWeight: 2
+    },
+    RAT: {
+        name: 'Rat',
+        color: PALETTE.RAT,
+        geometry: 'box', // BoxGeometry(0.5, 0.3, 0.5)
+        size: [0.5, 0.3, 0.5],
+        baseHP: 5,
+        baseAC: 10,
+        baseDamage: [1, 3], // 1d3
+        xpValue: 10,
+        spawnDepth: 1,
+        spawnWeight: 12 // Very common at low levels
+    },
+    KOBOLD: {
+        name: 'Kobold',
+        color: PALETTE.KOBOLD,
+        geometry: 'cone', // ConeGeometry(0.4, 1.0, 6)
+        size: [0.4, 1.0, 6],
+        baseHP: 7,
+        baseAC: 11,
+        baseDamage: [1, 4], // 1d4
+        xpValue: 25,
+        spawnDepth: 1,
+        spawnWeight: 11 // Prolific at low levels
+    },
+    TROLL: {
+        name: 'Troll',
+        color: PALETTE.TROLL,
+        geometry: 'box', // BoxGeometry(1.2, 1.5, 1.2)
+        size: [1.2, 1.5, 1.2],
+        baseHP: 25,
+        baseAC: 14,
+        baseDamage: [2, 6], // 2d6
+        xpValue: 200,
+        spawnDepth: 4, // Mid-levels
+        spawnWeight: 6,
+        regenerates: true // Special: regenerates 1HP per turn
+    },
+    THUG: {
+        name: 'Thug',
+        color: PALETTE.THUG,
+        geometry: 'box', // BoxGeometry(0.9, 1.4, 0.9)
+        size: [0.9, 1.4, 0.9],
+        baseHP: 18,
+        baseAC: 13,
+        baseDamage: [1, 8], // 1d8
+        xpValue: 120,
+        spawnDepth: 3,
+        spawnWeight: 8
+    },
+    GOLEM: {
+        name: 'Golem',
+        color: PALETTE.GOLEM,
+        geometry: 'box', // BoxGeometry(1.0, 1.8, 1.0)
+        size: [1.0, 1.8, 1.0],
+        baseHP: 35,
+        baseAC: 16,
+        baseDamage: [2, 8], // 2d8
+        xpValue: 300,
+        spawnDepth: 5,
+        spawnWeight: 5
+    },
+    GIANT_SPIDER: {
+        name: 'Giant Spider',
+        color: PALETTE.GIANT_SPIDER,
+        geometry: 'sphere', // SphereGeometry(0.7, 8, 6)
+        size: [0.7, 8, 6],
+        baseHP: 12,
+        baseAC: 12,
+        baseDamage: [1, 6], // 1d6 plus potential poison
+        xpValue: 75,
+        spawnDepth: 2,
+        spawnWeight: 7
     }
 };
 
@@ -124,7 +204,8 @@ export const ITEM_TYPES = {
     POTION: 'potion',
     SCROLL: 'scroll',
     RING: 'ring',
-    GOLD: 'gold'
+    GOLD: 'gold',
+    FOOD: 'food'
 };
 
 // Material properties for low-poly aesthetics

@@ -3,7 +3,7 @@
  * Creates Three.js geometries and materials for dungeon visualization
  */
 
-import { PALETTE, MATERIAL_PROPS, TILE_SIZE } from './constants.js';
+import { PALETTE, MATERIAL_PROPS, TILE_SIZE, ITEM_TYPES } from './constants.js';
 
 /**
  * Add white outline to a mesh
@@ -229,6 +229,69 @@ export function createEnemy(THREE, enemyConfig, x, z) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(x, 1, z);
     mesh.castShadow = true;
+    
+    return addWhiteOutline(THREE, mesh);
+}
+
+/**
+ * Create item mesh with white outline
+ * @param {object} THREE - Three.js library
+ * @param {object} item - Item entity
+ * @param {number} x - World X position
+ * @param {number} z - World Z position
+ * @returns {object} Three.js Group containing mesh and outline
+ */
+export function createItem(THREE, item, x, z) {
+    let geometry;
+    let color;
+    
+    switch (item.type) {
+        case ITEM_TYPES.WEAPON:
+            geometry = new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6);
+            color = PALETTE.SWORD;
+            break;
+        case ITEM_TYPES.ARMOR:
+            geometry = new THREE.BoxGeometry(0.5, 0.5, 0.2);
+            color = PALETTE.SWORD;
+            break;
+        case ITEM_TYPES.POTION:
+            geometry = new THREE.CylinderGeometry(0.15, 0.15, 0.4, 8);
+            color = PALETTE.POTION;
+            break;
+        case ITEM_TYPES.SCROLL:
+            geometry = new THREE.BoxGeometry(0.4, 0.1, 0.3);
+            color = PALETTE.SCROLL;
+            break;
+        case ITEM_TYPES.FOOD:
+            geometry = new THREE.BoxGeometry(0.3, 0.2, 0.3);
+            color = PALETTE.FOOD;
+            break;
+        case ITEM_TYPES.GOLD:
+            geometry = new THREE.OctahedronGeometry(0.2, 0);
+            color = PALETTE.GOLD;
+            break;
+        case ITEM_TYPES.RING:
+            geometry = new THREE.TorusGeometry(0.15, 0.05, 8, 12);
+            color = PALETTE.RING;
+            break;
+        default:
+            geometry = new THREE.SphereGeometry(0.2, 8, 6);
+            color = PALETTE.GOLD;
+    }
+    
+    const material = new THREE.MeshStandardMaterial({
+        color: color,
+        ...MATERIAL_PROPS
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, 0.3, z);
+    mesh.castShadow = true;
+    
+    // Rotate weapon to lay flat
+    if (item.type === ITEM_TYPES.WEAPON) {
+        mesh.rotation.z = Math.PI / 2;
+    }
     
     return addWhiteOutline(THREE, mesh);
 }

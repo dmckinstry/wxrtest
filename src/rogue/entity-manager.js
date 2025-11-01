@@ -125,6 +125,22 @@ export function createGold(amount) {
 }
 
 /**
+ * Create a food item
+ * @param {string} name - Food name (e.g., 'ration', 'apple', 'bread')
+ * @param {number} hungerRestore - Amount of hunger restored
+ * @returns {object} Food item
+ */
+export function createFood(name, hungerRestore = 100) {
+    return {
+        id: `food_${Date.now()}_${Math.random()}`,
+        type: ITEM_TYPES.FOOD,
+        name: name,
+        hungerRestore: hungerRestore,
+        identified: true
+    };
+}
+
+/**
  * Identify an item
  * @param {object} item - Item to identify
  * @returns {object} Identified item
@@ -144,6 +160,12 @@ export function identifyItem(item) {
 export function getItemDisplayName(item) {
     if (item.identified || item.type === ITEM_TYPES.WEAPON || 
         item.type === ITEM_TYPES.ARMOR || item.type === ITEM_TYPES.GOLD) {
+        // For potions, include prefix if present
+        if (item.type === ITEM_TYPES.POTION && item.trueType) {
+            const prefix = item.prefix ? (item.prefix.charAt(0).toUpperCase() + item.prefix.slice(1) + ' ') : '';
+            const typeName = item.trueType.charAt(0).toUpperCase() + item.trueType.slice(1);
+            return `${prefix}Potion of ${typeName}`;
+        }
         return item.name || item.trueType;
     }
     return item.appearance;
@@ -156,6 +178,162 @@ export function getItemDisplayName(item) {
  */
 export function isEntityAlive(entity) {
     return entity.hp > 0 && entity.isAlive !== false;
+}
+
+/**
+ * Generate loot drop from defeated enemy
+ * @param {object} enemy - Defeated enemy entity
+ * @param {number} dungeonLevel - Current dungeon level
+ * @returns {object|null} Item to drop, or null
+ */
+export function generateEnemyLoot(enemy, dungeonLevel) {
+    // Drop chance varies by enemy type and level
+    const baseDropChance = 0.3; // 30% base chance
+    const dropRoll = Math.random();
+    
+    if (dropRoll > baseDropChance) {
+        return null; // No drop
+    }
+    
+    // Determine item type based on level
+    const itemTypeRoll = Math.random();
+    let itemType;
+    
+    if (itemTypeRoll < 0.25) {
+        itemType = 'weapon';
+    } else if (itemTypeRoll < 0.40) {
+        itemType = 'armor';
+    } else if (itemTypeRoll < 0.60) {
+        itemType = 'potion';
+    } else if (itemTypeRoll < 0.75) {
+        itemType = 'food';
+    } else if (itemTypeRoll < 0.90) {
+        itemType = 'scroll';
+    } else {
+        itemType = 'gold';
+    }
+    
+    // Create the item at enemy's position
+    const spawn = {
+        itemType: itemType,
+        position: { ...enemy.position },
+        level: dungeonLevel
+    };
+    
+    return createItemFromSpawn(spawn);
+}
+
+/**
+ * Create an item entity from spawn data
+ * @param {object} spawn - Spawn data {itemType, position, level}
+ * @param {object} rng - Seeded random number generator (optional)
+ * @returns {object} Item entity
+ */
+export function createItemFromSpawn(spawn, rng = null) {
+    const getRandom = () => rng ? rng.next() : Math.random();
+    const getRandomInt = (min, max) => {
+        const rand = getRandom();
+        return Math.floor(rand * (max - min + 1)) + min;
+    };
+    
+    const baseItem = {
+        position: { ...spawn.position },
+        level: spawn.level
+    };
+    
+    switch (spawn.itemType) {
+        case 'weapon': {
+            const weaponTypes = [
+                { name: 'Dagger', damage: [1, 4], bonus: 0 },
+                { name: 'Short Sword', damage: [1, 6], bonus: 1 },
+                { name: 'Long Sword', damage: [1, 8], bonus: 2 },
+                { name: 'Battle Axe', damage: [1, 10], bonus: 1 },
+                { name: 'Mace', damage: [2, 4], bonus: 0 }
+            ];
+            const weapon = weaponTypes[getRandomInt(0, weaponTypes.length - 1)];
+            return { ...baseItem, ...createWeapon(weapon.name, weapon.damage, weapon.bonus) };
+        }
+        
+        case 'armor': {
+            const armorTypes = [
+                { name: 'Leather Armor', acBonus: 1 },
+                { name: 'Chain Mail', acBonus: 3 },
+                { name: 'Plate Mail', acBonus: 5 },
+                { name: 'Shield', acBonus: 2 }
+            ];
+            const armor = armorTypes[getRandomInt(0, armorTypes.length - 1)];
+            return { ...baseItem, ...createArmor(armor.name, armor.acBonus) };
+        }
+        
+        case 'potion': {
+            const potionTypes = [
+                { trueType: 'healing', appearance: 'red potion' },
+                { trueType: 'healing', appearance: 'crimson potion' },
+                { trueType: 'healing', appearance: 'ruby potion' },
+                { trueType: 'poison', appearance: 'green potion' },
+                { trueType: 'poison', appearance: 'emerald potion' },
+                { trueType: 'invisibility', appearance: 'clear potion' },
+                { trueType: 'invisibility', appearance: 'transparent potion' },
+                { trueType: 'speed', appearance: 'blue potion' },
+                { trueType: 'speed', appearance: 'azure potion' },
+                { trueType: 'strength', appearance: 'orange potion' },
+                { trueType: 'strength', appearance: 'amber potion' },
+                { trueType: 'skill', appearance: 'yellow potion' },
+                { trueType: 'skill', appearance: 'golden potion' },
+                { trueType: 'sight', appearance: 'purple potion' },
+                { trueType: 'sight', appearance: 'violet potion' },
+                { trueType: 'attraction', appearance: 'black potion' },
+                { trueType: 'attraction', appearance: 'dark potion' },
+                { trueType: 'stone', appearance: 'gray potion' },
+                { trueType: 'stone', appearance: 'silver potion' }
+            ];
+            
+            // Determine prefix based on level
+            let prefix = '';
+            if (spawn.level <= 3) {
+                // Lower levels: 60% lesser, 40% normal
+                prefix = getRandomInt(0, 9) < 6 ? 'Lesser ' : '';
+            } else if (spawn.level >= 7) {
+                // Higher levels: 40% normal, 60% greater
+                prefix = getRandomInt(0, 9) < 6 ? 'Greater ' : '';
+            }
+            // Middle levels (4-6): all normal, no prefix
+            
+            const potion = potionTypes[getRandomInt(0, potionTypes.length - 1)];
+            const potionItem = createPotion(potion.trueType, potion.appearance, {});
+            potionItem.prefix = prefix.trim().toLowerCase(); // 'lesser', 'greater', or ''
+            return { ...baseItem, ...potionItem };
+        }
+        
+        case 'scroll': {
+            const scrollTypes = [
+                { trueType: 'identify', appearance: 'dusty scroll' },
+                { trueType: 'identify', appearance: 'ancient scroll' }
+            ];
+            const scroll = scrollTypes[getRandomInt(0, scrollTypes.length - 1)];
+            return { ...baseItem, ...createScroll(scroll.trueType, scroll.appearance, {}) };
+        }
+        
+        case 'food': {
+            const foodTypes = [
+                { name: 'ration', restore: 150 },
+                { name: 'bread', restore: 100 },
+                { name: 'apple', restore: 50 },
+                { name: 'cheese', restore: 80 },
+                { name: 'dried meat', restore: 120 }
+            ];
+            const food = foodTypes[getRandomInt(0, foodTypes.length - 1)];
+            return { ...baseItem, ...createFood(food.name, food.restore) };
+        }
+        
+        case 'gold': {
+            const amount = getRandomInt(10, 50) * spawn.level;
+            return { ...baseItem, ...createGold(amount) };
+        }
+        
+        default:
+            return { ...baseItem, ...createGold(10) };
+    }
 }
 
 /**

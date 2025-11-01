@@ -127,6 +127,8 @@
             <div class="stat-entry">Level: --</div>
             <div class="stat-entry">XP: --/--</div>
             <div class="stat-entry">AC: --</div>
+            <div class="stat-entry">Weapon: --</div>
+            <div class="stat-entry">Armor: --</div>
             <div class="stat-entry">Dungeon Level: --</div>
             <div class="stat-entry">Kills: --</div>
             <div class="stat-entry">Gold: --</div>
@@ -134,11 +136,12 @@
         </div>
     </div>
     <div id="inventory-display">
-        <h2>Inventory</h2>
+        <h2>Inventory (<u>U</u>se / <u>D</u>rop)</h2>
         <div id="inventory-items">
         </div>
         <div class="footer">
-            Press 'i' or 'A' button to close
+            Press 'i' to close<br>
+            Select item (a-z), then press 'u' to use or 'd' to drop
         </div>
     </div>
     <button id="vr-button">Enter VR</button>
@@ -329,12 +332,29 @@
                 const hungerPercent = state.player.hunger / state.player.maxHunger;
                 const hungerColor = hungerPercent > 0.5 ? '#00ff00' : hungerPercent > 0.2 ? '#ffaa00' : '#ff0000';
                 
+                // Get equipped items
+                const weaponName = state.player.weapon ? state.player.weapon.name : 'none';
+                const armorName = state.player.armor ? state.player.armor.name : 'none';
+                
+                // Get active effects
+                let effectsHTML = '';
+                if (state.player.statusEffects && state.player.statusEffects.length > 0) {
+                    const effects = state.player.statusEffects.map(e => {
+                        const name = e.type.charAt(0).toUpperCase() + e.type.slice(1);
+                        return `${name} (${e.turnsRemaining})`;
+                    }).join(', ');
+                    effectsHTML = `<div class="stat-entry" style="color: #00ffff">Effects: ${effects}</div>`;
+                }
+                
                 statsContainer.innerHTML = `
                     <div class="stat-entry" style="color: ${hpColor}">HP: ${state.player.hp}/${state.player.maxHp}</div>
                     <div class="stat-entry" style="color: ${hungerColor}">Hunger: ${state.player.hunger}</div>
                     <div class="stat-entry">Level: ${state.player.level}</div>
                     <div class="stat-entry">XP: ${state.player.xp}/${state.player.xpToNext}</div>
                     <div class="stat-entry">AC: ${state.player.ac}</div>
+                    <div class="stat-entry">Weapon: ${weaponName}</div>
+                    <div class="stat-entry">Armor: ${armorName}</div>
+                    ${effectsHTML}
                     <div class="stat-entry">Dungeon Level: ${state.dungeon.level}</div>
                     <div class="stat-entry">Kills: ${state.statistics.kills}</div>
                     <div class="stat-entry">Gold: ${state.statistics.goldCollected}</div>
@@ -343,20 +363,54 @@
             }
         }
         
+        // Track inventory action state
+        let pendingInventorySlot = null;
+        
         function setupKeyboardControls() {
             window.addEventListener('keydown', (event) => {
-                keyboardState[event.code] = true;
-                
                 // Handle special keys
                 if (event.code === 'Enter' || event.code === 'NumpadEnter') {
                     if (gameController) {
                         gameController.interact();
                     }
+                    keyboardState[event.code] = true;
                 } else if (event.code === 'KeyI') {
                     if (gameController) {
                         gameController.toggleInventory();
                         updateInventoryDisplay();
+                        pendingInventorySlot = null; // Reset pending action
                     }
+                    keyboardState[event.code] = true;
+                } else if (gameController && gameController.getInventoryState().visible) {
+                    // Inventory is open - handle inventory actions and prevent movement
+                    event.preventDefault(); // Prevent default browser behavior
+                    
+                    // Check for action keys first (U and D)
+                    if (pendingInventorySlot !== null && event.code === 'KeyU') {
+                        gameController.useInventoryItem(pendingInventorySlot);
+                        updateInventoryDisplay();
+                        pendingInventorySlot = null;
+                    } else if (pendingInventorySlot !== null && event.code === 'KeyD') {
+                        gameController.dropInventoryItem(pendingInventorySlot);
+                        updateInventoryDisplay();
+                        pendingInventorySlot = null;
+                    } else {
+                        // Check if pressing a-z for slot selection (excluding u and d which are action keys)
+                        const keyChar = event.key.toLowerCase();
+                        if (keyChar.length === 1 && keyChar >= 'a' && keyChar <= 'z' && keyChar !== 'u' && keyChar !== 'd') {
+                            const slot = keyChar.charCodeAt(0) - 'a'.charCodeAt(0);
+                            pendingInventorySlot = slot;
+                            console.log(`Selected slot ${keyChar} (${slot})`);
+                            updateInventoryDisplay(); // Update display to show selection
+                            // Don't set keyboardState for inventory letter keys
+                        } else if (keyChar !== 'u' && keyChar !== 'd') {
+                            // Other keys while inventory is open - allow them but don't process for movement
+                            keyboardState[event.code] = true;
+                        }
+                    }
+                } else {
+                    // Normal gameplay - set keyboard state for movement
+                    keyboardState[event.code] = true;
                 }
             });
             
@@ -376,7 +430,13 @@
                 if (invState.visible) {
                     invDisplay.style.display = 'block';
                     invItems.innerHTML = invState.items
-                        .map(item => `<div style="padding: 2px 0;">${item}</div>`)
+                        .map((item, index) => {
+                            const isSelected = pendingInventorySlot === index;
+                            const style = isSelected 
+                                ? 'padding: 2px 4px; background-color: rgba(0, 255, 0, 0.3); border: 1px solid #00ff00;' 
+                                : 'padding: 2px 0;';
+                            return `<div style="${style}">${item}</div>`;
+                        })
                         .join('');
                 } else {
                     invDisplay.style.display = 'none';
@@ -442,11 +502,11 @@
             
             // Update camera rotation in desktop mode (not in VR)
             if (!renderer.xr.isPresenting) {
-                // Handle keyboard rotation (arrow keys)
-                if (keyboardState['ArrowLeft']) {
+                // Handle keyboard rotation (arrow keys and A/D keys)
+                if (keyboardState['ArrowLeft'] || keyboardState['KeyA']) {
                     yaw += keyboardRotationSpeed * deltaTime;
                 }
-                if (keyboardState['ArrowRight']) {
+                if (keyboardState['ArrowRight'] || keyboardState['KeyD']) {
                     yaw -= keyboardRotationSpeed * deltaTime;
                 }
                 

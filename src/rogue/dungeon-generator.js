@@ -128,13 +128,19 @@ export function generateDungeon(seed, level = 1, width = 40, height = 40) {
     const enemyCount = Math.floor(level * ENEMY_SCALE_FACTOR);
     const enemySpawns = generateEnemySpawns(rng, rooms, enemyCount, level, stairsPosition);
     
+    // Calculate item spawns based on level
+    const itemCount = Math.floor(level * 2 + 3); // More items than enemies
+    const itemSpawns = generateItemSpawns(rng, rooms, itemCount, level, stairsPosition);
+    
     return {
         grid,
         rooms,
         stairsPosition,
         enemySpawns,
+        itemSpawns,
         width,
-        height
+        height,
+        level
     };
 }
 
@@ -229,6 +235,67 @@ function generateEnemySpawns(rng, rooms, count, level, stairsPosition) {
     }
     
     return spawns;
+}
+
+/**
+ * Generate item spawn positions
+ * @param {SeededRandom} rng - Random number generator
+ * @param {Array<Room>} rooms - List of rooms
+ * @param {number} count - Number of items to spawn
+ * @param {number} level - Dungeon level
+ * @param {object} stairsPosition - Stairs position to avoid
+ * @returns {Array<object>} Item spawn data
+ */
+function generateItemSpawns(rng, rooms, count, level, stairsPosition) {
+    const spawns = [];
+    
+    // Skip first room (player spawn)
+    const spawnRooms = rooms.slice(1);
+    
+    if (spawnRooms.length === 0) {
+        return spawns;
+    }
+    
+    for (let i = 0; i < count; i++) {
+        const room = rng.choice(spawnRooms);
+        const position = {
+            x: rng.nextInt(room.x + 1, room.x + room.width - 2),
+            y: rng.nextInt(room.y + 1, room.y + room.height - 2)
+        };
+        
+        // Don't spawn on stairs
+        if (position.x === stairsPosition.x && position.y === stairsPosition.y) {
+            continue;
+        }
+        
+        const itemType = selectItemType(rng, level);
+        
+        spawns.push({
+            itemType,
+            position,
+            level: level
+        });
+    }
+    
+    return spawns;
+}
+
+/**
+ * Select an item type to spawn based on level
+ * @param {SeededRandom} rng - Random number generator
+ * @param {number} level - Dungeon level
+ * @returns {string} Item type (weapon, armor, potion, scroll, food, gold)
+ */
+function selectItemType(rng, level) {
+    const roll = rng.next();
+    
+    // Item spawn probabilities
+    if (roll < 0.15) return 'weapon';      // 15%
+    if (roll < 0.25) return 'armor';       // 10%
+    if (roll < 0.45) return 'potion';      // 20%
+    if (roll < 0.60) return 'scroll';      // 15%
+    if (roll < 0.80) return 'food';        // 20%
+    return 'gold';                         // 20%
 }
 
 /**

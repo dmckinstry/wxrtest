@@ -47,20 +47,22 @@ describe('Movement System', () => {
             expect(result).toEqual({ x: 0, y: 1 });
         });
 
-        it('should read A key for left movement', () => {
+        it('should read A key - now handled for rotation', () => {
             const keyStates = { 'KeyA': true };
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: -1, y: 0 });
+            // A key is now handled in index.html for rotation, not strafing
+            expect(result).toEqual({ x: 0, y: 0 });
         });
 
-        it('should read D key for right movement', () => {
+        it('should read D key - now handled for rotation', () => {
             const keyStates = { 'KeyD': true };
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: 0 });
+            // D key is now handled in index.html for rotation, not strafing
+            expect(result).toEqual({ x: 0, y: 0 });
         });
 
         it('should read arrow keys for movement and rotation', () => {
@@ -72,12 +74,13 @@ describe('Movement System', () => {
             expect(result).toEqual({ x: 0, y: -1 });
         });
 
-        it('should combine multiple keys', () => {
-            const keyStates = { 'KeyW': true, 'KeyD': true };
+        it('should combine W and S keys', () => {
+            const keyStates = { 'KeyW': true, 'KeyS': true };
             
             const result = readKeyboardAxes(keyStates);
             
-            expect(result).toEqual({ x: 1, y: -1 });
+            // Both forward and back cancel out
+            expect(result).toEqual({ x: 0, y: 0 });
         });
     });
 

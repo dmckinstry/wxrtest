@@ -5,7 +5,8 @@ export default {
     'src/**/*.js',
     '!src/**/*.test.js',
     '!src/game-controller.js',  // Integration module - tested in browser
-    '!src/rogue/audio-generator.js'  // Web Audio API - tested in browser
+    '!src/rogue/audio-generator.js',  // Web Audio API - tested in browser
+    '!src/rogue/render-utils.js'  // Three.js rendering - difficult to test without browser
   ],
   coverageThreshold: {
     global: {

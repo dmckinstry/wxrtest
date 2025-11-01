@@ -55,10 +55,22 @@ export function calculateHit(attacker, defender, roll = null) {
  * Execute a combat attack
  * @param {object} attacker - Attacker entity
  * @param {object} defender - Defender entity
+ * @param {Array} attackerEffects - Status effects on attacker (optional)
+ * @param {Array} defenderEffects - Status effects on defender (optional)
  * @returns {object} Combat result {hit, damage, killed, attackRoll}
  */
-export function executeAttack(attacker, defender) {
-    const attackResult = calculateHit(attacker, defender);
+export function executeAttack(attacker, defender, attackerEffects = [], defenderEffects = []) {
+    // Check if defender has stone effect (invulnerable)
+    const hasStone = defenderEffects.some(e => e.type === 'stone');
+    
+    // Apply skill bonus to attack if attacker has it
+    let attackBonus = attacker.attackBonus || 0;
+    const skillEffect = attackerEffects.find(e => e.type === 'skill');
+    if (skillEffect) {
+        attackBonus += skillEffect.magnitude;
+    }
+    
+    const attackResult = calculateHit({...attacker, attackBonus}, defender);
     
     if (!attackResult.hit) {
         return {
@@ -66,6 +78,17 @@ export function executeAttack(attacker, defender) {
             damage: 0,
             killed: false,
             attackRoll: attackResult
+        };
+    }
+    
+    // If defender has stone, no damage
+    if (hasStone) {
+        return {
+            hit: true,
+            damage: 0,
+            killed: false,
+            attackRoll: attackResult,
+            blocked: true
         };
     }
     
@@ -85,6 +108,12 @@ export function executeAttack(attacker, defender) {
         );
     } else {
         damage = rollDamage(1, 4, 0); // Default 1d4
+    }
+    
+    // Apply strength bonus to damage if attacker has it
+    const strengthEffect = attackerEffects.find(e => e.type === 'strength');
+    if (strengthEffect) {
+        damage += strengthEffect.magnitude;
     }
     
     // Critical hit doubles damage
@@ -110,11 +139,18 @@ export function executeAttack(attacker, defender) {
  * @param {object} playerPosition - Player grid position
  * @param {Array<Array>} grid - Dungeon grid
  * @param {function} findPath - Pathfinding function
+ * @param {Array} playerEffects - Player's active status effects (optional)
  * @returns {object} {action: 'move'|'attack'|'wait', newPosition?, target?}
  */
-export function processEnemyTurn(enemy, playerPosition, grid, findPath) {
+export function processEnemyTurn(enemy, playerPosition, grid, findPath, playerEffects = []) {
     if (!enemy.isAlive) {
         return { action: 'wait' };
+    }
+    
+    // Check if player is invisible - if so, enemy doesn't see them
+    const playerInvisible = playerEffects.some(e => e.type === 'invisibility');
+    if (playerInvisible) {
+        return { action: 'wait' }; // Enemy can't see player, doesn't move or attack
     }
     
     // Check if player is adjacent (can attack)

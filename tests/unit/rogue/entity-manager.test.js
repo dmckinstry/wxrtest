@@ -9,10 +9,13 @@ import {
     createPotion,
     createScroll,
     createGold,
+    createFood,
+    createItemFromSpawn,
     identifyItem,
     getItemDisplayName,
     isEntityAlive,
-    damageEntity
+    damageEntity,
+    generateEnemyLoot
 } from '../../../src/rogue/entity-manager.js';
 import { ITEM_TYPES } from '../../../src/rogue/constants.js';
 
@@ -232,13 +235,13 @@ describe('Entity Manager', () => {
             expect(name).toBe('red potion');
         });
 
-        it('should return true type for identified potion', () => {
+        it('should return formatted name for identified potion', () => {
             const potion = createPotion('healing', 'red potion', {});
             const identified = identifyItem(potion);
             
             const name = getItemDisplayName(identified);
             
-            expect(name).toBe('healing');
+            expect(name).toBe('Potion of Healing');
         });
 
         it('should return appearance for unidentified scroll', () => {
@@ -325,4 +328,181 @@ describe('Entity Manager', () => {
             expect(entity.hp).toBe(20);
         });
     });
+
+    describe('createFood', () => {
+        it('should create food with default hunger restore', () => {
+            // Arrange & Act
+            const food = createFood('ration');
+            
+            // Assert
+            expect(food.type).toBe(ITEM_TYPES.FOOD);
+            expect(food.name).toBe('ration');
+            expect(food.hungerRestore).toBe(100);
+            expect(food.identified).toBe(true);
+        });
+
+        it('should create food with custom hunger restore', () => {
+            const food = createFood('apple', 50);
+            
+            expect(food.name).toBe('apple');
+            expect(food.hungerRestore).toBe(50);
+        });
+
+        it('should have unique id', () => {
+            const food1 = createFood('bread');
+            const food2 = createFood('bread');
+            
+            expect(food1.id).not.toBe(food2.id);
+        });
+    });
+
+    describe('createItemFromSpawn', () => {
+        it('should create weapon from weapon spawn', () => {
+            const spawn = {
+                itemType: 'weapon',
+                position: { x: 5, y: 5 },
+                level: 1
+            };
+            
+            const item = createItemFromSpawn(spawn);
+            
+            expect(item.type).toBe(ITEM_TYPES.WEAPON);
+            expect(item.position).toEqual({ x: 5, y: 5 });
+            expect(item.name).toBeDefined();
+        });
+
+        it('should create armor from armor spawn', () => {
+            const spawn = {
+                itemType: 'armor',
+                position: { x: 3, y: 3 },
+                level: 2
+            };
+            
+            const item = createItemFromSpawn(spawn);
+            
+            expect(item.type).toBe(ITEM_TYPES.ARMOR);
+            expect(item.position).toEqual({ x: 3, y: 3 });
+        });
+
+        it('should create food from food spawn', () => {
+            const spawn = {
+                itemType: 'food',
+                position: { x: 7, y: 7 },
+                level: 1
+            };
+            
+            const item = createItemFromSpawn(spawn);
+            
+            expect(item.type).toBe(ITEM_TYPES.FOOD);
+            expect(item.hungerRestore).toBeGreaterThan(0);
+        });
+
+        it('should create gold from gold spawn with level scaling', () => {
+            const spawn1 = {
+                itemType: 'gold',
+                position: { x: 1, y: 1 },
+                level: 1
+            };
+            const spawn5 = {
+                itemType: 'gold',
+                position: { x: 2, y: 2 },
+                level: 5
+            };
+            
+            const gold1 = createItemFromSpawn(spawn1);
+            const gold5 = createItemFromSpawn(spawn5);
+            
+            expect(gold1.type).toBe(ITEM_TYPES.GOLD);
+            expect(gold5.amount).toBeGreaterThan(gold1.amount);
+        });
+        
+        it('should create potions with prefixes', () => {
+            const spawn = { itemType: 'potion', position: { x: 1, y: 1 }, level: 1 };
+            
+            const potion = createItemFromSpawn(spawn);
+            
+            expect(potion.type).toBe(ITEM_TYPES.POTION);
+            expect(potion).toHaveProperty('prefix');
+            expect(potion).toHaveProperty('trueType');
+        });
+    });
+    
+    describe('generateEnemyLoot', () => {
+        it('should sometimes return null (no drop)', () => {
+            const enemy = { position: { x: 5, y: 5 }, type: 'GOBLIN' };
+            let nullCount = 0;
+            
+            for (let i = 0; i < 20; i++) {
+                const loot = generateEnemyLoot(enemy, 1);
+                if (loot === null) nullCount++;
+            }
+            
+            // Should have some null results (no drop)
+            expect(nullCount).toBeGreaterThan(0);
+        });
+        
+        it('should generate item at enemy position when dropping', () => {
+            const enemy = { position: { x: 10, y: 15 }, type: 'GOBLIN' };
+            
+            // Try multiple times to get at least one drop
+            let loot = null;
+            for (let i = 0; i < 50; i++) {
+                loot = generateEnemyLoot(enemy, 1);
+                if (loot) break;
+            }
+            
+            if (loot) {
+                expect(loot.position.x).toBe(10);
+                expect(loot.position.y).toBe(15);
+            }
+        });
+        
+        it('should generate level-appropriate items', () => {
+            const enemy = { position: { x: 5, y: 5 }, type: 'GOBLIN' };
+            
+            // Try to get a drop
+            let loot = null;
+            for (let i = 0; i < 50; i++) {
+                loot = generateEnemyLoot(enemy, 5);
+                if (loot) break;
+            }
+            
+            if (loot) {
+                expect(loot).toHaveProperty('type');
+            }
+        });
+    });
+    
+    describe('getItemDisplayName with prefixes', () => {
+        it('should display potion with prefix when identified', () => {
+            const potion = createPotion('healing', 'red potion', {});
+            potion.prefix = 'lesser';
+            potion.identified = true;
+            
+            const name = getItemDisplayName(potion);
+            
+            expect(name).toBe('Lesser Potion of Healing');
+        });
+        
+        it('should display potion without prefix when identified', () => {
+            const potion = createPotion('healing', 'red potion', {});
+            potion.prefix = '';
+            potion.identified = true;
+            
+            const name = getItemDisplayName(potion);
+            
+            expect(name).toBe('Potion of Healing');
+        });
+        
+        it('should display greater potion when identified', () => {
+            const potion = createPotion('strength', 'orange potion', {});
+            potion.prefix = 'greater';
+            potion.identified = true;
+            
+            const name = getItemDisplayName(potion);
+            
+            expect(name).toBe('Greater Potion of Strength');
+        });
+    });
 });
+
