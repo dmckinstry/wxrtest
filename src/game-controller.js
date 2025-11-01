@@ -508,23 +508,30 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 enemy.hp = Math.min(enemy.hp + 1, enemy.maxHp);
             }
             
+            const playerEffects = gameState.player.statusEffects || [];
             const action = processEnemyTurn(
                 enemy,
                 gameState.player.position,
                 dungeon.grid,
-                findPath
+                findPath,
+                playerEffects
             );
             
             if (action.action === 'attack') {
                 // Enemy attacks player
-                const result = executeAttack(enemy, gameState.player);
+                const playerEffects = gameState.player.statusEffects || [];
+                const result = executeAttack(enemy, gameState.player, [], playerEffects);
                 const message = getCombatMessage(enemy.name, 'Player', result);
                 combatLog.push(message);
                 addLogMessage(message); // Add to action log
                 
                 if (result.hit) {
                     playCombatHitSound(0.3);
-                    gameState = damagePlayer(gameState, result.damage);
+                    if (result.blocked) {
+                        addLogMessage('💎 Stone effect blocks damage!');
+                    } else {
+                        gameState = damagePlayer(gameState, result.damage);
+                    }
                 }
             } else if (action.action === 'move') {
                 // Check if target position is occupied by another enemy
@@ -807,7 +814,8 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         if (action.type === 'attack') {
             // Attack adjacent enemy
             const enemy = action.target;
-            const result = executeAttack(gameState.player, enemy);
+            const playerEffects = gameState.player.statusEffects || [];
+            const result = executeAttack(gameState.player, enemy, playerEffects, []);
             const message = getCombatMessage('Player', enemy.name, result);
             addLogMessage(message);
             
