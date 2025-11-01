@@ -527,13 +527,24 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     gameState = damagePlayer(gameState, result.damage);
                 }
             } else if (action.action === 'move') {
-                // Move enemy
-                enemy.position = action.newPosition;
-                const world = gridToWorld(action.newPosition.x, action.newPosition.y);
-                const mesh = enemyMeshes.get(enemy.id);
-                if (mesh) {
-                    mesh.position.set(world.x, 1, world.z);
+                // Check if target position is occupied by another enemy
+                const targetOccupied = gameState.entities.enemies.some(otherEnemy => 
+                    otherEnemy.id !== enemy.id &&
+                    isEntityAlive(otherEnemy) &&
+                    otherEnemy.position.x === action.newPosition.x &&
+                    otherEnemy.position.y === action.newPosition.y
+                );
+                
+                // Only move if target is not occupied
+                if (!targetOccupied) {
+                    enemy.position = action.newPosition;
+                    const world = gridToWorld(action.newPosition.x, action.newPosition.y);
+                    const mesh = enemyMeshes.get(enemy.id);
+                    if (mesh) {
+                        mesh.position.set(world.x, 1, world.z);
+                    }
                 }
+                // If occupied, enemy doesn't move (blocked)
             }
         }
     }
