@@ -58,7 +58,7 @@ import {
     calculateCameraRotation,
     clampPitch
 } from './rogue/movement.js';
-import { createEnemy as createEnemyEntity, isEntityAlive, createItemFromSpawn } from './rogue/entity-manager.js';
+import { createEnemy as createEnemyEntity, isEntityAlive, createItemFromSpawn, generateEnemyLoot } from './rogue/entity-manager.js';
 import { executeAttack, processEnemyTurn, getCombatMessage } from './rogue/combat.js';
 import { 
     playFootstepSound,
@@ -499,6 +499,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         for (const enemy of gameState.entities.enemies) {
             if (!isEntityAlive(enemy)) continue;
             
+            // Handle special abilities
+            const enemyConfig = ENEMY_TYPES[enemy.type];
+            
+            // Troll regeneration
+            if (enemyConfig && enemyConfig.regenerates && enemy.hp < enemy.maxHp) {
+                enemy.hp = Math.min(enemy.hp + 1, enemy.maxHp);
+            }
+            
             const action = processEnemyTurn(
                 enemy,
                 gameState.player.position,
@@ -798,6 +806,25 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     // Award XP (simplified - just use xpValue from entity)
                     const xpGained = enemy.xpValue || 50;
                     addLogMessage(`+${xpGained} XP`);
+                    
+                    // Generate loot drop
+                    const loot = generateEnemyLoot(enemy, gameState.dungeon.level);
+                    if (loot) {
+                        gameState.entities.items.push(loot);
+                        
+                        // Create mesh for the loot
+                        const world = gridToWorld(loot.position.x, loot.position.y);
+                        const mesh = createItem(THREE, loot, world.x, world.z);
+                        
+                        // Check if item is visible
+                        const key = `${loot.position.x},${loot.position.y}`;
+                        mesh.visible = gameState.visibleTiles.has(key);
+                        
+                        scene.add(mesh);
+                        itemMeshes.set(loot.id, mesh);
+                        
+                        addLogMessage(`${enemy.name} dropped an item!`);
+                    }
                 }
             }
             

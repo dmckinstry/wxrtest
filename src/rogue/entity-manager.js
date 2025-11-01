@@ -175,6 +175,49 @@ export function isEntityAlive(entity) {
 }
 
 /**
+ * Generate loot drop from defeated enemy
+ * @param {object} enemy - Defeated enemy entity
+ * @param {number} dungeonLevel - Current dungeon level
+ * @returns {object|null} Item to drop, or null
+ */
+export function generateEnemyLoot(enemy, dungeonLevel) {
+    // Drop chance varies by enemy type and level
+    const baseDropChance = 0.3; // 30% base chance
+    const dropRoll = Math.random();
+    
+    if (dropRoll > baseDropChance) {
+        return null; // No drop
+    }
+    
+    // Determine item type based on level
+    const itemTypeRoll = Math.random();
+    let itemType;
+    
+    if (itemTypeRoll < 0.25) {
+        itemType = 'weapon';
+    } else if (itemTypeRoll < 0.40) {
+        itemType = 'armor';
+    } else if (itemTypeRoll < 0.60) {
+        itemType = 'potion';
+    } else if (itemTypeRoll < 0.75) {
+        itemType = 'food';
+    } else if (itemTypeRoll < 0.90) {
+        itemType = 'scroll';
+    } else {
+        itemType = 'gold';
+    }
+    
+    // Create the item at enemy's position
+    const spawn = {
+        itemType: itemType,
+        position: { ...enemy.position },
+        level: dungeonLevel
+    };
+    
+    return createItemFromSpawn(spawn);
+}
+
+/**
  * Create an item entity from spawn data
  * @param {object} spawn - Spawn data {itemType, position, level}
  * @param {object} rng - Seeded random number generator (optional)
