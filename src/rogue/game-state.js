@@ -32,7 +32,8 @@ export function createInitialState(seed = Date.now()) {
             attackBonus: 0,
             damageBonus: 0,
             weapon: null,
-            armor: null
+            armor: null,
+            statusEffects: [] // Active status effects
         },
         
         // Dungeon state

@@ -234,13 +234,13 @@ describe('Entity Manager', () => {
             expect(name).toBe('red potion');
         });
 
-        it('should return true type for identified potion', () => {
+        it('should return formatted name for identified potion', () => {
             const potion = createPotion('healing', 'red potion', {});
             const identified = identifyItem(potion);
             
             const name = getItemDisplayName(identified);
             
-            expect(name).toBe('healing');
+            expect(name).toBe('Potion of Healing');
         });
 
         it('should return appearance for unidentified scroll', () => {

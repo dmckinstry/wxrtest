@@ -160,6 +160,12 @@ export function identifyItem(item) {
 export function getItemDisplayName(item) {
     if (item.identified || item.type === ITEM_TYPES.WEAPON || 
         item.type === ITEM_TYPES.ARMOR || item.type === ITEM_TYPES.GOLD) {
+        // For potions, include prefix if present
+        if (item.type === ITEM_TYPES.POTION && item.trueType) {
+            const prefix = item.prefix ? (item.prefix.charAt(0).toUpperCase() + item.prefix.slice(1) + ' ') : '';
+            const typeName = item.trueType.charAt(0).toUpperCase() + item.trueType.slice(1);
+            return `${prefix}Potion of ${typeName}`;
+        }
         return item.name || item.trueType;
     }
     return item.appearance;
@@ -263,10 +269,40 @@ export function createItemFromSpawn(spawn, rng = null) {
             const potionTypes = [
                 { trueType: 'healing', appearance: 'red potion' },
                 { trueType: 'healing', appearance: 'crimson potion' },
-                { trueType: 'healing', appearance: 'ruby potion' }
+                { trueType: 'healing', appearance: 'ruby potion' },
+                { trueType: 'poison', appearance: 'green potion' },
+                { trueType: 'poison', appearance: 'emerald potion' },
+                { trueType: 'invisibility', appearance: 'clear potion' },
+                { trueType: 'invisibility', appearance: 'transparent potion' },
+                { trueType: 'speed', appearance: 'blue potion' },
+                { trueType: 'speed', appearance: 'azure potion' },
+                { trueType: 'strength', appearance: 'orange potion' },
+                { trueType: 'strength', appearance: 'amber potion' },
+                { trueType: 'skill', appearance: 'yellow potion' },
+                { trueType: 'skill', appearance: 'golden potion' },
+                { trueType: 'sight', appearance: 'purple potion' },
+                { trueType: 'sight', appearance: 'violet potion' },
+                { trueType: 'attraction', appearance: 'black potion' },
+                { trueType: 'attraction', appearance: 'dark potion' },
+                { trueType: 'stone', appearance: 'gray potion' },
+                { trueType: 'stone', appearance: 'silver potion' }
             ];
+            
+            // Determine prefix based on level
+            let prefix = '';
+            if (spawn.level <= 3) {
+                // Lower levels: 60% lesser, 40% normal
+                prefix = getRandomInt(0, 9) < 6 ? 'Lesser ' : '';
+            } else if (spawn.level >= 7) {
+                // Higher levels: 40% normal, 60% greater
+                prefix = getRandomInt(0, 9) < 6 ? 'Greater ' : '';
+            }
+            // Middle levels (4-6): all normal, no prefix
+            
             const potion = potionTypes[getRandomInt(0, potionTypes.length - 1)];
-            return { ...baseItem, ...createPotion(potion.trueType, potion.appearance, {}) };
+            const potionItem = createPotion(potion.trueType, potion.appearance, {});
+            potionItem.prefix = prefix.trim().toLowerCase(); // 'lesser', 'greater', or ''
+            return { ...baseItem, ...potionItem };
         }
         
         case 'scroll': {

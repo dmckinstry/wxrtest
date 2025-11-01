@@ -4,6 +4,7 @@
  */
 
 import { INVENTORY_SIZE, ITEM_TYPES } from './constants.js';
+import { createStatusEffect, addStatusEffect, STATUS_TYPES } from './status-effects.js';
 
 /**
  * Create empty inventory
@@ -92,22 +93,100 @@ export function useItem(inventory, slot, state) {
     
     // Apply item effect based on type
     switch (item.type) {
-        case ITEM_TYPES.POTION:
-            if (item.trueType === 'healing') {
-                const healAmount = 20;
-                newState.player.hp = Math.min(
-                    newState.player.hp + healAmount,
-                    newState.player.maxHp
-                );
-                message = `Quaffed ${item.appearance || item.name}. Healed ${healAmount} HP!`;
-                
-                // Mark this potion type as identified for the player
-                if (!item.identified) {
-                    item.identified = true;
-                    // TODO: Implement global potion type identification
+        case ITEM_TYPES.POTION: {
+            // Apply prefix multiplier
+            let multiplier = 1.0;
+            if (item.prefix === 'lesser') multiplier = 0.5;
+            if (item.prefix === 'greater') multiplier = 2.0;
+            
+            // Ensure statusEffects array exists
+            if (!newState.player.statusEffects) {
+                newState.player.statusEffects = [];
+            }
+            
+            switch (item.trueType) {
+                case 'healing': {
+                    const healAmount = Math.floor(20 * multiplier);
+                    newState.player.hp = Math.min(
+                        newState.player.hp + healAmount,
+                        newState.player.maxHp
+                    );
+                    message = `Healed ${healAmount} HP!`;
+                    break;
                 }
+                
+                case 'poison': {
+                    const damage = Math.floor(10 * multiplier); // Half of healing
+                    newState.player.hp = Math.max(1, newState.player.hp - damage);
+                    message = `Poisoned! Lost ${damage} HP!`;
+                    break;
+                }
+                
+                case 'invisibility': {
+                    const duration = Math.floor(10 * multiplier);
+                    const effect = createStatusEffect(STATUS_TYPES.INVISIBILITY, duration);
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    message = `You become invisible for ${duration} turns!`;
+                    break;
+                }
+                
+                case 'speed': {
+                    const duration = Math.floor(8 * multiplier);
+                    const effect = createStatusEffect(STATUS_TYPES.SPEED, duration);
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    message = `You feel much faster for ${duration} turns!`;
+                    break;
+                }
+                
+                case 'strength': {
+                    const duration = Math.floor(12 * multiplier);
+                    const bonus = Math.floor(5 * multiplier);
+                    const effect = createStatusEffect(STATUS_TYPES.STRENGTH, duration, bonus);
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    message = `You feel stronger for ${duration} turns!`;
+                    break;
+                }
+                
+                case 'skill': {
+                    const duration = Math.floor(12 * multiplier);
+                    const bonus = Math.floor(3 * multiplier);
+                    const effect = createStatusEffect(STATUS_TYPES.SKILL, duration, bonus);
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    message = `Your skill improves for ${duration} turns!`;
+                    break;
+                }
+                
+                case 'sight': {
+                    const duration = Math.floor(15 * multiplier);
+                    const range = Math.floor(5 * multiplier);
+                    const effect = createStatusEffect(STATUS_TYPES.SIGHT, duration, range);
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    message = `Your vision expands for ${duration} turns!`;
+                    break;
+                }
+                
+                case 'attraction': {
+                    // Instant effect - spawn enemies nearby
+                    message = `Monsters are attracted to you!`;
+                    // Note: Actual spawning handled in game controller
+                    const effect = createStatusEffect(STATUS_TYPES.ATTRACTION, 1); // 1 turn marker
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    break;
+                }
+                
+                case 'stone': {
+                    const duration = Math.floor(10 * multiplier);
+                    const effect = createStatusEffect(STATUS_TYPES.STONE, duration);
+                    newState.player.statusEffects = addStatusEffect(newState.player.statusEffects, effect);
+                    message = `You turn to stone for ${duration} turns! Movement slowed, but invulnerable!`;
+                    break;
+                }
+                
+                default:
+                    message = `Nothing happens...`;
             }
             break;
+        }
             
         case ITEM_TYPES.SCROLL:
             if (item.trueType === 'identify') {
