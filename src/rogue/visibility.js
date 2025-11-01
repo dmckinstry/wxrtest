@@ -5,6 +5,22 @@
 
 import { TILE_SIZE, VISIBILITY_RADIUS } from './constants.js';
 import { distance } from './grid-utils.js';
+import { getStatusEffect, STATUS_TYPES } from './status-effects.js';
+
+/**
+ * Calculate effective visibility radius based on status effects
+ * @param {Array} statusEffects - Active status effects
+ * @param {number} baseRadius - Base visibility radius
+ * @returns {number} Effective visibility radius
+ */
+export function getEffectiveVisibilityRadius(statusEffects, baseRadius = VISIBILITY_RADIUS) {
+    const sightEffect = getStatusEffect(statusEffects, STATUS_TYPES.SIGHT);
+    if (sightEffect) {
+        // Add the magnitude (range bonus) to the base radius
+        return baseRadius + sightEffect.magnitude;
+    }
+    return baseRadius;
+}
 
 /**
  * Compute visible tiles from a position using radius-based visibility

@@ -33,7 +33,8 @@ import { generateDungeon, getPlayerStartPosition } from './rogue/dungeon-generat
 import { 
     computeVisibleTiles,
     updateExploredTiles,
-    filterVisibleEntities
+    filterVisibleEntities,
+    getEffectiveVisibilityRadius
 } from './rogue/visibility.js';
 import {
     createWall,
@@ -44,7 +45,8 @@ import {
     createEnemy,
     createPlayer,
     createItem,
-    createHUDCanvas
+    createHUDCanvas,
+    createTargetHighlight
 } from './rogue/render-utils.js';
 import {
     readJoystickAxes,
@@ -58,7 +60,7 @@ import {
     calculateCameraRotation,
     clampPitch
 } from './rogue/movement.js';
-import { createEnemy as createEnemyEntity, isEntityAlive, createItemFromSpawn, generateEnemyLoot } from './rogue/entity-manager.js';
+import { createEnemy as createEnemyEntity, isEntityAlive, createItemFromSpawn, generateEnemyLoot, getRandomEnemyTypeForLevel, isValidSpawnPosition } from './rogue/entity-manager.js';
 import { executeAttack, processEnemyTurn, getCombatMessage } from './rogue/combat.js';
 import { 
     playFootstepSound,
@@ -93,6 +95,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     let itemMeshes = new Map();
     let lightMap = new Map();
     let playerMesh = null; // Will be initialized after dungeon load
+    let targetHighlight = null; // Yellow preview of target tile
     
     // Generate initial dungeon
     let dungeon = generateDungeon(seed, 1);
@@ -138,7 +141,8 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         };
         
         // Reset visibility
-        gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos);
+        const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects || []);
+        gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos, visibilityRadius);
         gameState.exploredTiles = updateExploredTiles(new Set(), gameState.visibleTiles);
         
         // Create entities from spawn data
@@ -238,7 +242,8 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     };
     
     // Initialize visibility
-    gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos);
+    const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects || []);
+    gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos, visibilityRadius);
     gameState.exploredTiles = updateExploredTiles(new Set(), gameState.visibleTiles);
     
     // Create entities from spawn data
@@ -657,6 +662,36 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         const moveDelta = calculateMovementDelta(axes, deltaTime, 2.6, gameState.player.rotation);
         const moveDistance = calculateMovementDistance(moveDelta);
         
+        // Update target tile highlight (yellow preview) based on movement direction
+        if (Math.abs(axes.x) > 0.01 || Math.abs(axes.y) > 0.01) {
+            // Calculate target position (1 tile ahead in movement direction)
+            const targetWorldPos = {
+                x: gameState.player.worldPosition.x + moveDelta.dx * 20, // Scale up for preview
+                z: gameState.player.worldPosition.z + moveDelta.dz * 20
+            };
+            const targetGridPos = worldToGrid(targetWorldPos.x, targetWorldPos.z);
+            const targetWorld = gridToWorld(targetGridPos.x, targetGridPos.y);
+            
+            // Show highlight if it's a walkable tile and different from current position
+            if (isWalkable(dungeon.grid, targetGridPos.x, targetGridPos.y) &&
+                (targetGridPos.x !== gameState.player.position.x || 
+                 targetGridPos.y !== gameState.player.position.y)) {
+                
+                if (!targetHighlight) {
+                    targetHighlight = createTargetHighlight(THREE, targetWorld.x, targetWorld.z);
+                    scene.add(targetHighlight);
+                } else {
+                    targetHighlight.position.set(targetWorld.x, 0.02, targetWorld.z);
+                    targetHighlight.visible = true;
+                }
+            } else if (targetHighlight) {
+                targetHighlight.visible = false;
+            }
+        } else if (targetHighlight) {
+            // Hide highlight when not moving
+            targetHighlight.visible = false;
+        }
+        
         // Apply movement if not in combat mode or always allow in exploration
         if (moveDistance > 0.01) {
             const newWorldPos = {
@@ -686,7 +721,8 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     }
                     
                     // Update visibility
-                    gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos);
+                    const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects || []);
+                    gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos, visibilityRadius);
                     gameState.exploredTiles = updateExploredTiles(
                         gameState.exploredTiles,
                         gameState.visibleTiles
@@ -704,7 +740,44 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     
                     // Update status effects
                     if (gameState.player.statusEffects) {
+                        // Check for attraction effect before updating (so we can detect it before it's removed)
+                        const hadAttractionEffect = hasStatusEffect(gameState.player.statusEffects, STATUS_TYPES.ATTRACTION);
+                        
                         gameState.player.statusEffects = updateStatusEffects(gameState.player.statusEffects);
+                        
+                        // Handle attraction effect - spawn 2-4 enemies nearby
+                        if (hadAttractionEffect) {
+                            const numToSpawn = 2 + Math.floor(Math.random() * 3); // 2-4 enemies
+                            let spawned = 0;
+                            const maxAttempts = 20;
+                            
+                            for (let attempt = 0; attempt < maxAttempts && spawned < numToSpawn; attempt++) {
+                                // Try to spawn in a radius of 3-7 tiles from player
+                                const angle = Math.random() * Math.PI * 2;
+                                const distance = 3 + Math.random() * 4;
+                                const spawnX = Math.round(gameState.player.position.x + Math.cos(angle) * distance);
+                                const spawnY = Math.round(gameState.player.position.y + Math.sin(angle) * distance);
+                                
+                                const spawnPos = { x: spawnX, y: spawnY };
+                                
+                                if (isValidSpawnPosition(spawnPos, dungeon.grid, gameState.entities.enemies, gameState.player.position)) {
+                                    const enemyType = getRandomEnemyTypeForLevel(gameState.dungeonLevel);
+                                    const enemy = createEnemyEntity(enemyType, spawnPos, gameState.dungeonLevel);
+                                    gameState.entities.enemies.push(enemy);
+                                    
+                                    // Create enemy mesh and add to scene
+                                    const enemyMesh = createEnemy(THREE, enemy);
+                                    scene.add(enemyMesh);
+                                    
+                                    spawned++;
+                                }
+                            }
+                            
+                            if (spawned > 0) {
+                                addLogMessage(`🎯 ${spawned} monster${spawned > 1 ? 's' : ''} appeared!`);
+                                playCombatHitSound(0.3);
+                            }
+                        }
                     }
                     
                     // Check for hunger warnings

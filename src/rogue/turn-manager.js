@@ -5,6 +5,7 @@
 
 import { MOVEMENT_THRESHOLD, HUNGER_RATE } from './constants.js';
 import { decreaseHunger, incrementTurn, resetAccumulatedMovement } from './game-state.js';
+import { hasStatusEffect, STATUS_TYPES } from './status-effects.js';
 
 /**
  * Create action queue
@@ -36,6 +37,20 @@ export function processNextAction(queue) {
     
     const [action, ...newQueue] = queue;
     return { action, newQueue };
+}
+
+/**
+ * Calculate effective movement threshold based on status effects
+ * @param {Array} statusEffects - Active status effects
+ * @param {number} baseThreshold - Base movement threshold
+ * @returns {number} Effective movement threshold
+ */
+export function getEffectiveMovementThreshold(statusEffects, baseThreshold = MOVEMENT_THRESHOLD) {
+    // Speed effect doubles the movement threshold (player can move twice as much per turn)
+    if (hasStatusEffect(statusEffects, STATUS_TYPES.SPEED)) {
+        return baseThreshold * 2;
+    }
+    return baseThreshold;
 }
 
 /**
@@ -97,5 +112,6 @@ export function processEnemyTurns(state) {
  * @returns {boolean} True if turn should be processed
  */
 export function checkTurnAdvancement(state) {
-    return shouldAdvanceTurn(state.accumulatedMovement);
+    const effectiveThreshold = getEffectiveMovementThreshold(state.player.statusEffects || []);
+    return shouldAdvanceTurn(state.accumulatedMovement, effectiveThreshold);
 }
