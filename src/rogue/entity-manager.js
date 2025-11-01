@@ -350,3 +350,72 @@ export function damageEntity(entity, damage) {
         isAlive: newHp > 0
     };
 }
+
+/**
+ * Get random enemy type for dungeon level
+ * @param {number} dungeonLevel - Current dungeon level
+ * @returns {string} Enemy type key
+ */
+export function getRandomEnemyTypeForLevel(dungeonLevel = 1) {
+    // Get available enemy types based on spawn depth
+    const availableTypes = Object.keys(ENEMY_TYPES).filter(
+        type => ENEMY_TYPES[type].spawnDepth <= dungeonLevel
+    );
+    
+    if (availableTypes.length === 0) {
+        return 'GOBLIN'; // Fallback
+    }
+    
+    // Weight-based selection
+    const weights = availableTypes.map(type => ENEMY_TYPES[type].spawnWeight);
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    
+    let random = Math.random() * totalWeight;
+    
+    for (let i = 0; i < availableTypes.length; i++) {
+        random -= weights[i];
+        if (random <= 0) {
+            return availableTypes[i];
+        }
+    }
+    
+    return availableTypes[availableTypes.length - 1];
+}
+
+/**
+ * Check if position is valid for spawning (walkable and not occupied)
+ * @param {object} position - Grid position {x, y}
+ * @param {Array<Array>} grid - 2D grid array
+ * @param {Array<object>} existingEnemies - Existing enemies to avoid
+ * @param {object} playerPosition - Player position to avoid
+ * @returns {boolean} True if position is valid
+ */
+export function isValidSpawnPosition(position, grid, existingEnemies, playerPosition) {
+    const { x, y } = position;
+    
+    // Check grid bounds
+    if (y < 0 || y >= grid.length || x < 0 || x >= grid[0].length) {
+        return false;
+    }
+    
+    // Check if walkable
+    const tile = grid[y][x];
+    if (tile !== 'floor' && tile !== 'door') {
+        return false;
+    }
+    
+    // Check if occupied by enemy
+    const occupied = existingEnemies.some(e => e.position.x === x && e.position.y === y);
+    if (occupied) {
+        return false;
+    }
+    
+    // Check if too close to player (should be at least 2 tiles away)
+    const dx = Math.abs(x - playerPosition.x);
+    const dy = Math.abs(y - playerPosition.y);
+    if (dx + dy < 2) {
+        return false;
+    }
+    
+    return true;
+}

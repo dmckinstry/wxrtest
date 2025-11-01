@@ -15,7 +15,9 @@ import {
     getItemDisplayName,
     isEntityAlive,
     damageEntity,
-    generateEnemyLoot
+    generateEnemyLoot,
+    getRandomEnemyTypeForLevel,
+    isValidSpawnPosition
 } from '../../../src/rogue/entity-manager.js';
 import { ITEM_TYPES } from '../../../src/rogue/constants.js';
 
@@ -502,6 +504,125 @@ describe('Entity Manager', () => {
             const name = getItemDisplayName(potion);
             
             expect(name).toBe('Greater Potion of Strength');
+        });
+    });
+
+    describe('getRandomEnemyTypeForLevel', () => {
+        it('should return valid enemy type for level 1', () => {
+            // Act
+            const enemyType = getRandomEnemyTypeForLevel(1);
+            
+            // Assert
+            expect(enemyType).toBeTruthy();
+            expect(typeof enemyType).toBe('string');
+        });
+
+        it('should return enemy type appropriate for dungeon level', () => {
+            // Act
+            const enemyType = getRandomEnemyTypeForLevel(5);
+            
+            // Assert
+            expect(enemyType).toBeTruthy();
+        });
+
+        it('should return fallback for level 0', () => {
+            // Act
+            const enemyType = getRandomEnemyTypeForLevel(0);
+            
+            // Assert
+            expect(enemyType).toBe('GOBLIN');
+        });
+    });
+
+    describe('isValidSpawnPosition', () => {
+        it('should return true for valid spawn position', () => {
+            // Arrange
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'floor', 'floor'],
+                ['wall', 'floor', 'wall']
+            ];
+            const position = { x: 2, y: 1 };
+            const existingEnemies = [];
+            const playerPosition = { x: 1, y: 2 };
+            
+            // Act
+            const valid = isValidSpawnPosition(position, grid, existingEnemies, playerPosition);
+            
+            // Assert
+            expect(valid).toBe(true);
+        });
+
+        it('should return false for wall tile', () => {
+            // Arrange
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'floor', 'floor'],
+                ['wall', 'floor', 'wall']
+            ];
+            const position = { x: 0, y: 0 };
+            const existingEnemies = [];
+            const playerPosition = { x: 1, y: 1 };
+            
+            // Act
+            const valid = isValidSpawnPosition(position, grid, existingEnemies, playerPosition);
+            
+            // Assert
+            expect(valid).toBe(false);
+        });
+
+        it('should return false for occupied position', () => {
+            // Arrange
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'floor', 'floor'],
+                ['wall', 'floor', 'wall']
+            ];
+            const position = { x: 1, y: 1 };
+            const existingEnemies = [{ position: { x: 1, y: 1 } }];
+            const playerPosition = { x: 2, y: 2 };
+            
+            // Act
+            const valid = isValidSpawnPosition(position, grid, existingEnemies, playerPosition);
+            
+            // Assert
+            expect(valid).toBe(false);
+        });
+
+        it('should return false for position too close to player', () => {
+            // Arrange
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'floor', 'floor'],
+                ['wall', 'floor', 'wall']
+            ];
+            const position = { x: 2, y: 1 };
+            const existingEnemies = [];
+            const playerPosition = { x: 2, y: 1 };
+            
+            // Act
+            const valid = isValidSpawnPosition(position, grid, existingEnemies, playerPosition);
+            
+            // Assert
+            expect(valid).toBe(false);
+        });
+
+        it('should return false for out of bounds position', () => {
+            // Arrange
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'floor', 'floor'],
+                ['wall', 'floor', 'wall']
+            ];
+            const position = { x: 10, y: 10 };
+            const existingEnemies = [];
+            const playerPosition = { x: 1, y: 1 };
+            
+            // Act
+            const valid = isValidSpawnPosition(position, grid, existingEnemies, playerPosition);
+            
+            // Assert
+            expect(valid).toBe(false);
         });
     });
 });

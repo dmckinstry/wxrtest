@@ -8,6 +8,15 @@ export const VISIBILITY_RADIUS = 5; // 5 meters visibility radius
 export const MOVEMENT_THRESHOLD = 2; // 2 meters to advance turn
 export const COMBAT_DETECTION_RADIUS = 10; // 10 meters for auto-combat mode
 
+// Target tile highlighting
+export const TARGET_PREVIEW_SCALE = 20; // Scale factor for target preview calculation
+
+// Attraction effect constants
+export const MIN_ATTRACTED_ENEMIES = 2; // Minimum enemies spawned by attraction
+export const MAX_ATTRACTED_ENEMIES_RANGE = 3; // Range added to min (2-4 total)
+export const MIN_SPAWN_DISTANCE = 3; // Minimum distance in tiles from player
+export const SPAWN_DISTANCE_RANGE = 4; // Range added to min distance
+
 // Color palette for low-poly flat-shaded aesthetics - vibrant and colorful
 export const PALETTE = {
     // Environment - bright and colorful

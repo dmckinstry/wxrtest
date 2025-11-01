@@ -10,9 +10,11 @@ import {
     advanceTurn,
     executePlayerAction,
     processEnemyTurns,
-    checkTurnAdvancement
+    checkTurnAdvancement,
+    getEffectiveMovementThreshold
 } from '../../../src/rogue/turn-manager.js';
 import { createInitialState } from '../../../src/rogue/game-state.js';
+import { createStatusEffect, STATUS_TYPES } from '../../../src/rogue/status-effects.js';
 
 describe('Turn Manager', () => {
     describe('createActionQueue', () => {
@@ -219,6 +221,94 @@ describe('Turn Manager', () => {
             
             // Assert
             expect(newState).toBe(state);
+        });
+    });
+
+    describe('getEffectiveMovementThreshold', () => {
+        it('should return base threshold when no speed effect', () => {
+            // Arrange
+            const effects = [];
+            
+            // Act
+            const threshold = getEffectiveMovementThreshold(effects);
+            
+            // Assert
+            expect(threshold).toBe(2); // MOVEMENT_THRESHOLD default
+        });
+
+        it('should double threshold when speed effect is active', () => {
+            // Arrange
+            const speedEffect = createStatusEffect(STATUS_TYPES.SPEED, 5);
+            const effects = [speedEffect];
+            
+            // Act
+            const threshold = getEffectiveMovementThreshold(effects);
+            
+            // Assert
+            expect(threshold).toBe(4); // 2 * 2
+        });
+
+        it('should use custom base threshold', () => {
+            // Arrange
+            const effects = [];
+            
+            // Act
+            const threshold = getEffectiveMovementThreshold(effects, 3);
+            
+            // Assert
+            expect(threshold).toBe(3);
+        });
+
+        it('should double custom base threshold with speed effect', () => {
+            // Arrange
+            const speedEffect = createStatusEffect(STATUS_TYPES.SPEED, 5);
+            const effects = [speedEffect];
+            
+            // Act
+            const threshold = getEffectiveMovementThreshold(effects, 3);
+            
+            // Assert
+            expect(threshold).toBe(6);
+        });
+    });
+
+    describe('checkTurnAdvancement with speed effect', () => {
+        it('should not advance turn with speed effect and low movement', () => {
+            // Arrange
+            const speedEffect = createStatusEffect(STATUS_TYPES.SPEED, 5);
+            const state = {
+                ...createInitialState(),
+                accumulatedMovement: 2.5,
+                player: {
+                    ...createInitialState().player,
+                    statusEffects: [speedEffect]
+                }
+            };
+            
+            // Act
+            const shouldAdvance = checkTurnAdvancement(state);
+            
+            // Assert
+            expect(shouldAdvance).toBe(false); // Need 4 meters with speed effect
+        });
+
+        it('should advance turn with speed effect and high movement', () => {
+            // Arrange
+            const speedEffect = createStatusEffect(STATUS_TYPES.SPEED, 5);
+            const state = {
+                ...createInitialState(),
+                accumulatedMovement: 4.5,
+                player: {
+                    ...createInitialState().player,
+                    statusEffects: [speedEffect]
+                }
+            };
+            
+            // Act
+            const shouldAdvance = checkTurnAdvancement(state);
+            
+            // Assert
+            expect(shouldAdvance).toBe(true); // 4.5 >= 4
         });
     });
 });
