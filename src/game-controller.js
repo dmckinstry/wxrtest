@@ -70,6 +70,7 @@ import {
     getInteractionAction
 } from './rogue/interaction.js';
 import { getInventoryDisplay, getSlotLetter, useItem, equipItem, removeItemFromInventory } from './rogue/inventory.js';
+import { updateStatusEffects, hasStatusEffect, getStatusEffect, STATUS_TYPES } from './rogue/status-effects.js';
 
 /**
  * Create and initialize the game
@@ -682,6 +683,11 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     const oldHunger = gameState.player.hunger;
                     gameState = advanceTurn(gameState);
                     playFootstepSound(0.2);
+                    
+                    // Update status effects
+                    if (gameState.player.statusEffects) {
+                        gameState.player.statusEffects = updateStatusEffects(gameState.player.statusEffects);
+                    }
                     
                     // Check for hunger warnings
                     const newHunger = gameState.player.hunger;

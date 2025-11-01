@@ -336,6 +336,16 @@
                 const weaponName = state.player.weapon ? state.player.weapon.name : 'none';
                 const armorName = state.player.armor ? state.player.armor.name : 'none';
                 
+                // Get active effects
+                let effectsHTML = '';
+                if (state.player.statusEffects && state.player.statusEffects.length > 0) {
+                    const effects = state.player.statusEffects.map(e => {
+                        const name = e.type.charAt(0).toUpperCase() + e.type.slice(1);
+                        return `${name} (${e.turnsRemaining})`;
+                    }).join(', ');
+                    effectsHTML = `<div class="stat-entry" style="color: #00ffff">Effects: ${effects}</div>`;
+                }
+                
                 statsContainer.innerHTML = `
                     <div class="stat-entry" style="color: ${hpColor}">HP: ${state.player.hp}/${state.player.maxHp}</div>
                     <div class="stat-entry" style="color: ${hungerColor}">Hunger: ${state.player.hunger}</div>
@@ -344,6 +354,7 @@
                     <div class="stat-entry">AC: ${state.player.ac}</div>
                     <div class="stat-entry">Weapon: ${weaponName}</div>
                     <div class="stat-entry">Armor: ${armorName}</div>
+                    ${effectsHTML}
                     <div class="stat-entry">Dungeon Level: ${state.dungeon.level}</div>
                     <div class="stat-entry">Kills: ${state.statistics.kills}</div>
                     <div class="stat-entry">Gold: ${state.statistics.goldCollected}</div>
