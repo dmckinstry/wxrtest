@@ -8,7 +8,12 @@ import {
     COMBAT_DETECTION_RADIUS,
     ENEMY_TYPES,
     PALETTE,
-    ITEM_TYPES
+    ITEM_TYPES,
+    TARGET_PREVIEW_SCALE,
+    MIN_ATTRACTED_ENEMIES,
+    MAX_ATTRACTED_ENEMIES_RANGE,
+    MIN_SPAWN_DISTANCE,
+    SPAWN_DISTANCE_RANGE
 } from './rogue/constants.js';
 import { 
     createInitialState,
@@ -141,7 +146,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         };
         
         // Reset visibility
-        const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects || []);
+        const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects);
         gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos, visibilityRadius);
         gameState.exploredTiles = updateExploredTiles(new Set(), gameState.visibleTiles);
         
@@ -242,7 +247,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     };
     
     // Initialize visibility
-    const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects || []);
+    const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects);
     gameState.visibleTiles = computeVisibleTiles(dungeon.grid, startPos, visibilityRadius);
     gameState.exploredTiles = updateExploredTiles(new Set(), gameState.visibleTiles);
     
@@ -666,8 +671,8 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         if (Math.abs(axes.x) > 0.01 || Math.abs(axes.y) > 0.01) {
             // Calculate target position (1 tile ahead in movement direction)
             const targetWorldPos = {
-                x: gameState.player.worldPosition.x + moveDelta.dx * 20, // Scale up for preview
-                z: gameState.player.worldPosition.z + moveDelta.dz * 20
+                x: gameState.player.worldPosition.x + moveDelta.dx * TARGET_PREVIEW_SCALE,
+                z: gameState.player.worldPosition.z + moveDelta.dz * TARGET_PREVIEW_SCALE
             };
             const targetGridPos = worldToGrid(targetWorldPos.x, targetWorldPos.z);
             const targetWorld = gridToWorld(targetGridPos.x, targetGridPos.y);
@@ -721,7 +726,7 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                     }
                     
                     // Update visibility
-                    const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects || []);
+                    const visibilityRadius = getEffectiveVisibilityRadius(gameState.player.statusEffects);
                     gameState.visibleTiles = computeVisibleTiles(dungeon.grid, gridPos, visibilityRadius);
                     gameState.exploredTiles = updateExploredTiles(
                         gameState.exploredTiles,
@@ -747,14 +752,14 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                         
                         // Handle attraction effect - spawn 2-4 enemies nearby
                         if (hadAttractionEffect) {
-                            const numToSpawn = 2 + Math.floor(Math.random() * 3); // 2-4 enemies
+                            const numToSpawn = MIN_ATTRACTED_ENEMIES + Math.floor(Math.random() * MAX_ATTRACTED_ENEMIES_RANGE);
                             let spawned = 0;
                             const maxAttempts = 20;
                             
                             for (let attempt = 0; attempt < maxAttempts && spawned < numToSpawn; attempt++) {
-                                // Try to spawn in a radius of 3-7 tiles from player
+                                // Try to spawn in a radius around player
                                 const angle = Math.random() * Math.PI * 2;
-                                const distance = 3 + Math.random() * 4;
+                                const distance = MIN_SPAWN_DISTANCE + Math.random() * SPAWN_DISTANCE_RANGE;
                                 const spawnX = Math.round(gameState.player.position.x + Math.cos(angle) * distance);
                                 const spawnY = Math.round(gameState.player.position.y + Math.sin(angle) * distance);
                                 

@@ -9,12 +9,13 @@ import { getStatusEffect, STATUS_TYPES } from './status-effects.js';
 
 /**
  * Calculate effective visibility radius based on status effects
- * @param {Array} statusEffects - Active status effects
+ * @param {Array} statusEffects - Active status effects (can be null/undefined)
  * @param {number} baseRadius - Base visibility radius
  * @returns {number} Effective visibility radius
  */
 export function getEffectiveVisibilityRadius(statusEffects, baseRadius = VISIBILITY_RADIUS) {
-    const sightEffect = getStatusEffect(statusEffects, STATUS_TYPES.SIGHT);
+    const effects = statusEffects || [];
+    const sightEffect = getStatusEffect(effects, STATUS_TYPES.SIGHT);
     if (sightEffect) {
         // Add the magnitude (range bonus) to the base radius
         return baseRadius + sightEffect.magnitude;

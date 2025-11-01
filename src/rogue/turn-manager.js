@@ -41,13 +41,14 @@ export function processNextAction(queue) {
 
 /**
  * Calculate effective movement threshold based on status effects
- * @param {Array} statusEffects - Active status effects
+ * @param {Array} statusEffects - Active status effects (can be null/undefined)
  * @param {number} baseThreshold - Base movement threshold
  * @returns {number} Effective movement threshold
  */
 export function getEffectiveMovementThreshold(statusEffects, baseThreshold = MOVEMENT_THRESHOLD) {
+    const effects = statusEffects || [];
     // Speed effect doubles the movement threshold (player can move twice as much per turn)
-    if (hasStatusEffect(statusEffects, STATUS_TYPES.SPEED)) {
+    if (hasStatusEffect(effects, STATUS_TYPES.SPEED)) {
         return baseThreshold * 2;
     }
     return baseThreshold;
@@ -112,6 +113,6 @@ export function processEnemyTurns(state) {
  * @returns {boolean} True if turn should be processed
  */
 export function checkTurnAdvancement(state) {
-    const effectiveThreshold = getEffectiveMovementThreshold(state.player.statusEffects || []);
+    const effectiveThreshold = getEffectiveMovementThreshold(state.player.statusEffects);
     return shouldAdvanceTurn(state.accumulatedMovement, effectiveThreshold);
 }
