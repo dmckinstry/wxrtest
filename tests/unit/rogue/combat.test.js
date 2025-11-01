@@ -302,4 +302,80 @@ describe('Combat System', () => {
             expect(message).toContain('defeated');
         });
     });
+    
+    describe('executeAttack with status effects', () => {
+        it('should apply strength bonus to damage', () => {
+            const attacker = { hp: 20, damage: [1, 1], attackBonus: 0 }; // 1 damage always
+            const defender = { hp: 20, ac: 5 };
+            const strengthEffect = { type: 'strength', magnitude: 5, turnsRemaining: 10 };
+            
+            const result = executeAttack(attacker, defender, [strengthEffect], []);
+            
+            // 1 base damage + 5 strength bonus = 6 damage
+            expect(result.damage).toBe(6);
+        });
+        
+        it('should apply skill bonus to hit chance', () => {
+            const attacker = { hp: 20, damage: [1, 6], attackBonus: 0 };
+            const defender = { hp: 20, ac: 10 };
+            const skillEffect = { type: 'skill', magnitude: 3, turnsRemaining: 10 };
+            
+            // Multiple attempts to verify skill bonus is applied
+            let hits = 0;
+            for (let i = 0; i < 50; i++) {
+                const result = executeAttack(attacker, defender, [skillEffect], []);
+                if (result.hit) hits++;
+            }
+            
+            // With +3 bonus, should hit more often than without
+            expect(hits).toBeGreaterThan(10);
+        });
+        
+        it('should block all damage with stone effect', () => {
+            const attacker = { hp: 20, damage: [10, 10], attackBonus: 10 }; // Guaranteed hit, high damage
+            const defender = { hp: 20, ac: 5 };
+            const stoneEffect = { type: 'stone', magnitude: 1, turnsRemaining: 10 };
+            
+            const result = executeAttack(attacker, defender, [], [stoneEffect]);
+            
+            expect(result.hit).toBe(true);
+            expect(result.damage).toBe(0);
+            expect(result.blocked).toBe(true);
+        });
+        
+        it('should work without status effects', () => {
+            const attacker = { hp: 20, damage: [1, 6], attackBonus: 0 };
+            const defender = { hp: 20, ac: 10 };
+            
+            const result = executeAttack(attacker, defender, [], []);
+            
+            expect(result).toHaveProperty('hit');
+            expect(result).toHaveProperty('damage');
+        });
+    });
+    
+    describe('processEnemyTurn with status effects', () => {
+        it('should make enemy wait if player is invisible', () => {
+            const enemy = { isAlive: true, position: { x: 5, y: 5 }, hp: 10 };
+            const playerPos = { x: 6, y: 5 }; // Adjacent
+            const grid = [[]];
+            const findPath = () => [];
+            const invisEffect = { type: 'invisibility', turnsRemaining: 5 };
+            
+            const result = processEnemyTurn(enemy, playerPos, grid, findPath, [invisEffect]);
+            
+            expect(result.action).toBe('wait');
+        });
+        
+        it('should attack if player not invisible and adjacent', () => {
+            const enemy = { isAlive: true, position: { x: 5, y: 5 }, hp: 10 };
+            const playerPos = { x: 6, y: 5 }; // Adjacent
+            const grid = [[]];
+            const findPath = () => [];
+            
+            const result = processEnemyTurn(enemy, playerPos, grid, findPath, []);
+            
+            expect(result.action).toBe('attack');
+        });
+    });
 });

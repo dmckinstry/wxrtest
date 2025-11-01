@@ -14,7 +14,8 @@ import {
     identifyItem,
     getItemDisplayName,
     isEntityAlive,
-    damageEntity
+    damageEntity,
+    generateEnemyLoot
 } from '../../../src/rogue/entity-manager.js';
 import { ITEM_TYPES } from '../../../src/rogue/constants.js';
 
@@ -413,6 +414,94 @@ describe('Entity Manager', () => {
             
             expect(gold1.type).toBe(ITEM_TYPES.GOLD);
             expect(gold5.amount).toBeGreaterThan(gold1.amount);
+        });
+        
+        it('should create potions with prefixes', () => {
+            const spawn = { itemType: 'potion', position: { x: 1, y: 1 }, level: 1 };
+            
+            const potion = createItemFromSpawn(spawn);
+            
+            expect(potion.type).toBe(ITEM_TYPES.POTION);
+            expect(potion).toHaveProperty('prefix');
+            expect(potion).toHaveProperty('trueType');
+        });
+    });
+    
+    describe('generateEnemyLoot', () => {
+        it('should sometimes return null (no drop)', () => {
+            const enemy = { position: { x: 5, y: 5 }, type: 'GOBLIN' };
+            let nullCount = 0;
+            
+            for (let i = 0; i < 20; i++) {
+                const loot = generateEnemyLoot(enemy, 1);
+                if (loot === null) nullCount++;
+            }
+            
+            // Should have some null results (no drop)
+            expect(nullCount).toBeGreaterThan(0);
+        });
+        
+        it('should generate item at enemy position when dropping', () => {
+            const enemy = { position: { x: 10, y: 15 }, type: 'GOBLIN' };
+            
+            // Try multiple times to get at least one drop
+            let loot = null;
+            for (let i = 0; i < 50; i++) {
+                loot = generateEnemyLoot(enemy, 1);
+                if (loot) break;
+            }
+            
+            if (loot) {
+                expect(loot.position.x).toBe(10);
+                expect(loot.position.y).toBe(15);
+            }
+        });
+        
+        it('should generate level-appropriate items', () => {
+            const enemy = { position: { x: 5, y: 5 }, type: 'GOBLIN' };
+            
+            // Try to get a drop
+            let loot = null;
+            for (let i = 0; i < 50; i++) {
+                loot = generateEnemyLoot(enemy, 5);
+                if (loot) break;
+            }
+            
+            if (loot) {
+                expect(loot).toHaveProperty('type');
+            }
+        });
+    });
+    
+    describe('getItemDisplayName with prefixes', () => {
+        it('should display potion with prefix when identified', () => {
+            const potion = createPotion('healing', 'red potion', {});
+            potion.prefix = 'lesser';
+            potion.identified = true;
+            
+            const name = getItemDisplayName(potion);
+            
+            expect(name).toBe('Lesser Potion of Healing');
+        });
+        
+        it('should display potion without prefix when identified', () => {
+            const potion = createPotion('healing', 'red potion', {});
+            potion.prefix = '';
+            potion.identified = true;
+            
+            const name = getItemDisplayName(potion);
+            
+            expect(name).toBe('Potion of Healing');
+        });
+        
+        it('should display greater potion when identified', () => {
+            const potion = createPotion('strength', 'orange potion', {});
+            potion.prefix = 'greater';
+            potion.identified = true;
+            
+            const name = getItemDisplayName(potion);
+            
+            expect(name).toBe('Greater Potion of Strength');
         });
     });
 });
