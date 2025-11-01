@@ -4,16 +4,18 @@
 name: Build and deploy Node.js app to Azure Web App - wrx
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  push:
+  workflow_dispatch:
+  # workflow_run:
+  #   workflows: ["CI"]
+  #   types:
+  #     - completed
 
 jobs:
   build:
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+    # if: >
+    #   github.event.workflow_run.conclusion == 'success' &&
+    #   github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
@@ -42,9 +44,9 @@ jobs:
           path: .
 
   deploy:
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+    # if: >
+    #   github.event.workflow_run.conclusion == 'success' &&
+    #   github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     needs: build
     permissions:
@@ -64,12 +66,14 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_91B268DE6BE64DF4BF280DD24CC909F3 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_67714E2BDA81497D8C5B0E26B31760F1 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: 'Deploy to WRX Production'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'wrx'
+          # app-name: 'wrx'
+          app-name: ${{ github.ref == 'refs/heads/main' && 'wrx' || 'wrx-dev' }}
           slot-name: 'Production'
           package: .
+
 
 
