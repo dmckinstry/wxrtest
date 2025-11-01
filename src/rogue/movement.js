@@ -19,13 +19,13 @@ export function readKeyboardAxes(keyStates) {
     let x = 0;
     let y = 0;
     
-    // WASD for movement (strafe and forward/back)
+    // WASD and Arrow keys for movement
+    // W/Up = forward, S/Down = backward
+    // A/D and Left/Right now handle rotation in index.html, not strafing
     if (keyStates['KeyW']) y -= 1;
     if (keyStates['KeyS']) y += 1;
-    if (keyStates['KeyA']) x -= 1;
-    if (keyStates['KeyD']) x += 1;
     
-    // Arrow keys: Up/Down for forward/back (Left/Right handled in index.html for rotation)
+    // Arrow keys: Up/Down for forward/back
     if (keyStates['ArrowUp']) y -= 1;
     if (keyStates['ArrowDown']) y += 1;
     

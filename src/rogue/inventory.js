@@ -87,6 +87,7 @@ export function useItem(inventory, slot, state) {
     
     const item = removeResult.item;
     let newState = { ...state };
+    let newInventory = removeResult.inventory; // Track inventory separately for consumables
     let message = '';
     
     // Apply item effect based on type
@@ -99,13 +100,19 @@ export function useItem(inventory, slot, state) {
                     newState.player.maxHp
                 );
                 message = `Quaffed ${item.appearance || item.name}. Healed ${healAmount} HP!`;
+                
+                // Mark this potion type as identified for the player
+                if (!item.identified) {
+                    item.identified = true;
+                    // TODO: Implement global potion type identification
+                }
             }
             break;
             
         case ITEM_TYPES.SCROLL:
             if (item.trueType === 'identify') {
                 // Identify all items in inventory
-                newState.inventory = inventory.map(i => 
+                newInventory = newInventory.map(i => 
                     i ? { ...i, identified: true } : null
                 );
                 message = 'Read scroll. All items identified!';
@@ -119,8 +126,8 @@ export function useItem(inventory, slot, state) {
                 newState.player.maxHunger
             );
             
-            // Food also restores HP (generally half of hunger restoration)
-            const hpAmount = Math.floor(hungerAmount / 10);
+            // Food also restores HP (reduced to 1/50 of hunger restoration)
+            const hpAmount = Math.floor(hungerAmount / 50);
             newState.player.hp = Math.min(
                 newState.player.hp + hpAmount,
                 newState.player.maxHp
@@ -130,11 +137,9 @@ export function useItem(inventory, slot, state) {
             
         case ITEM_TYPES.WEAPON:
             // Equip weapon via use
-            newState.inventory = removeResult.inventory;
-            
-            // Unequip current weapon if any
+            // For weapons, we need to add back to inventory if replacing
             if (newState.player.weapon) {
-                const addResult = addItemToInventory(newState.inventory, newState.player.weapon);
+                const addResult = addItemToInventory(newInventory, newState.player.weapon);
                 if (!addResult.success) {
                     return {
                         success: false,
@@ -143,7 +148,7 @@ export function useItem(inventory, slot, state) {
                         message: 'Inventory full - cannot swap weapons'
                     };
                 }
-                newState.inventory = addResult.inventory;
+                newInventory = addResult.inventory;
             }
             
             newState.player.weapon = item;
@@ -152,11 +157,9 @@ export function useItem(inventory, slot, state) {
             
         case ITEM_TYPES.ARMOR:
             // Equip armor via use
-            newState.inventory = removeResult.inventory;
-            
-            // Unequip current armor if any
+            // For armor, we need to add back to inventory if replacing
             if (newState.player.armor) {
-                const addResult = addItemToInventory(newState.inventory, newState.player.armor);
+                const addResult = addItemToInventory(newInventory, newState.player.armor);
                 if (!addResult.success) {
                     return {
                         success: false,
@@ -165,7 +168,7 @@ export function useItem(inventory, slot, state) {
                         message: 'Inventory full - cannot swap armor'
                     };
                 }
-                newState.inventory = addResult.inventory;
+                newInventory = addResult.inventory;
             }
             
             newState.player.armor = item;
@@ -183,16 +186,20 @@ export function useItem(inventory, slot, state) {
             };
     }
     
-    // Mark item as identified
-    if (!item.identified) {
-        newState.inventory = newState.inventory || inventory;
+    // Mark item as identified for consumables
+    if (!item.identified && (item.type === ITEM_TYPES.POTION || item.type === ITEM_TYPES.SCROLL)) {
+        // Mark item as identified in the inventory
+        newInventory = newInventory.map(i => 
+            i && i.type === item.type && i.trueType === item.trueType ? { ...i, identified: true } : i
+        );
     }
     
     newState.statistics.itemsUsed++;
+    newState.inventory = newInventory;
     
     return {
         success: true,
-        inventory: removeResult.inventory,
+        inventory: newInventory,
         newState: newState,
         message: message
     };

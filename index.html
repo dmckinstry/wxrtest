@@ -491,11 +491,11 @@
             
             // Update camera rotation in desktop mode (not in VR)
             if (!renderer.xr.isPresenting) {
-                // Handle keyboard rotation (arrow keys)
-                if (keyboardState['ArrowLeft']) {
+                // Handle keyboard rotation (arrow keys and A/D keys)
+                if (keyboardState['ArrowLeft'] || keyboardState['KeyA']) {
                     yaw += keyboardRotationSpeed * deltaTime;
                 }
-                if (keyboardState['ArrowRight']) {
+                if (keyboardState['ArrowRight'] || keyboardState['KeyD']) {
                     yaw -= keyboardRotationSpeed * deltaTime;
                 }
                 
