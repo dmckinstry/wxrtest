@@ -6,10 +6,10 @@
 import { isEntityAlive } from './entity-manager.js';
 
 /**
- * Find interactable entities at player's position
- * @param {object} position - Player's grid position {x, y}
+ * Find interactable entities at a target position
+ * @param {object} position - Target grid position {x, y} (e.g., tile in front of player)
  * @param {object} entities - Game entities {enemies, items}
- * @param {string} tile - Tile type at player's position
+ * @param {string} tile - Tile type at target position
  * @returns {object} Interactable entities {items: Array, stairs: boolean, enemies: Array}
  */
 export function findInteractablesAtPosition(position, entities, tile) {
@@ -26,16 +26,13 @@ export function findInteractablesAtPosition(position, entities, tile) {
         );
     }
     
-    // Find enemies at adjacent positions (within attack range)
+    // Find enemies at the target position (for attacking)
     if (entities.enemies) {
         result.enemies = entities.enemies.filter(enemy => {
             if (!isEntityAlive(enemy)) return false;
             
-            const dx = Math.abs(enemy.position.x - position.x);
-            const dy = Math.abs(enemy.position.y - position.y);
-            
-            // Adjacent includes diagonals
-            return dx <= 1 && dy <= 1 && (dx > 0 || dy > 0);
+            // Check if enemy is at the exact target position
+            return enemy.position.x === position.x && enemy.position.y === position.y;
         });
     }
     

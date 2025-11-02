@@ -38,12 +38,12 @@ describe('Interaction System', () => {
             expect(result.stairs).toBe(true);
         });
         
-        it('should find adjacent enemies', () => {
+        it('should find enemy at target position', () => {
             const position = { x: 5, y: 5 };
             const entities = {
                 items: [],
                 enemies: [
-                    { id: '1', position: { x: 6, y: 5 }, name: 'Goblin', hp: 10, isAlive: true },
+                    { id: '1', position: { x: 5, y: 5 }, name: 'Goblin', hp: 10, isAlive: true },
                     { id: '2', position: { x: 10, y: 10 }, name: 'Dragon', hp: 50, isAlive: true }
                 ]
             };
@@ -55,12 +55,12 @@ describe('Interaction System', () => {
             expect(result.enemies[0].name).toBe('Goblin');
         });
         
-        it('should not include dead enemies', () => {
+        it('should not find enemies at adjacent positions', () => {
             const position = { x: 5, y: 5 };
             const entities = {
                 items: [],
                 enemies: [
-                    { id: '1', position: { x: 6, y: 5 }, name: 'Goblin', hp: 0, isAlive: false }
+                    { id: '1', position: { x: 6, y: 5 }, name: 'Goblin', hp: 10, isAlive: true }
                 ]
             };
             const tile = 'floor';
@@ -70,7 +70,22 @@ describe('Interaction System', () => {
             expect(result.enemies.length).toBe(0);
         });
         
-        it('should find enemies on diagonals', () => {
+        it('should not include dead enemies', () => {
+            const position = { x: 5, y: 5 };
+            const entities = {
+                items: [],
+                enemies: [
+                    { id: '1', position: { x: 5, y: 5 }, name: 'Goblin', hp: 0, isAlive: false }
+                ]
+            };
+            const tile = 'floor';
+            
+            const result = findInteractablesAtPosition(position, entities, tile);
+            
+            expect(result.enemies.length).toBe(0);
+        });
+        
+        it('should not find enemies on diagonals', () => {
             const position = { x: 5, y: 5 };
             const entities = {
                 items: [],
@@ -82,7 +97,7 @@ describe('Interaction System', () => {
             
             const result = findInteractablesAtPosition(position, entities, tile);
             
-            expect(result.enemies.length).toBe(1);
+            expect(result.enemies.length).toBe(0);
         });
     });
     

@@ -667,19 +667,8 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         const moveDistance = calculateMovementDistance(moveDelta);
         
         // Update target tile highlight (yellow preview) - shows tile in front of player based on facing direction
-        // This is the tile that would be targeted by an attack action
-        const playerRotation = gameState.player.rotation;
-        
-        // Calculate the tile 1 square in front based on facing direction
-        // In Three.js, rotation 0 faces -Z (south), rotation increases counter-clockwise
-        // So: 0 = South, PI/2 = West, PI = North, 3*PI/2 = East
-        const facingDx = Math.round(-Math.sin(playerRotation));
-        const facingDy = Math.round(-Math.cos(playerRotation));
-        
-        const targetGridPos = {
-            x: gameState.player.position.x + facingDx,
-            y: gameState.player.position.y + facingDy
-        };
+        // This is the tile that would be targeted by an attack action or interaction
+        const targetGridPos = getTargetTile();
         const targetWorld = gridToWorld(targetGridPos.x, targetGridPos.y);
         
         // Show highlight if it's within grid bounds and different from current position
@@ -878,17 +867,37 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
     }
     
     /**
+     * Get the tile position in front of the player based on facing direction
+     * @returns {object} Target position {x, y}
+     */
+    function getTargetTile() {
+        const playerRotation = gameState.player.rotation;
+        
+        // Calculate the tile 1 square in front based on facing direction
+        // In Three.js, rotation 0 faces -Z (south), rotation increases counter-clockwise
+        // So: 0 = South, PI/2 = West, PI = North, 3*PI/2 = East
+        const facingDx = Math.round(-Math.sin(playerRotation));
+        const facingDy = Math.round(-Math.cos(playerRotation));
+        
+        return {
+            x: gameState.player.position.x + facingDx,
+            y: gameState.player.position.y + facingDy
+        };
+    }
+    
+    /**
      * Handle player interaction with the environment
      * @returns {boolean} True if an interaction was performed
      */
     function interact() {
         if (gameState.gameOver) return false;
         
-        const position = gameState.player.position;
-        const tile = dungeon.grid[position.y]?.[position.x];
+        // Interactions happen on the highlighted tile in front of the player
+        const targetPosition = getTargetTile();
+        const tile = dungeon.grid[targetPosition.y]?.[targetPosition.x];
         
         const interactables = findInteractablesAtPosition(
-            position,
+            targetPosition,
             gameState.entities,
             tile
         );
