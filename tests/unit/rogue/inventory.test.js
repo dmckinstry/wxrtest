@@ -378,5 +378,51 @@ describe('Inventory System', () => {
             
             expect(display[0]).toBe('a) red potion');
         });
+
+        it('should display identified potions with "Potion of" prefix', () => {
+            const inventory = createInventory();
+            const potion = {
+                type: ITEM_TYPES.POTION,
+                trueType: 'healing',
+                appearance: 'red potion',
+                identified: true
+            };
+            const addResult = addItemToInventory(inventory, potion);
+            
+            const display = getInventoryDisplay(addResult.inventory);
+            
+            expect(display[0]).toBe('a) Potion of Healing');
+        });
+
+        it('should display identified potions with prefix correctly', () => {
+            const inventory = createInventory();
+            const potion = {
+                type: ITEM_TYPES.POTION,
+                trueType: 'strength',
+                appearance: 'orange potion',
+                identified: true,
+                prefix: 'greater'
+            };
+            const addResult = addItemToInventory(inventory, potion);
+            
+            const display = getInventoryDisplay(addResult.inventory);
+            
+            expect(display[0]).toBe('a) Greater Potion of Strength');
+        });
+
+        it('should display identified scrolls with "Scroll of" prefix', () => {
+            const inventory = createInventory();
+            const scroll = {
+                type: ITEM_TYPES.SCROLL,
+                trueType: 'identify',
+                appearance: 'dusty scroll',
+                identified: true
+            };
+            const addResult = addItemToInventory(inventory, scroll);
+            
+            const display = getInventoryDisplay(addResult.inventory);
+            
+            expect(display[0]).toBe('a) Scroll of Identify');
+        });
     });
 });
