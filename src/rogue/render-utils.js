@@ -194,6 +194,29 @@ export function createMovementIndicator(THREE, radius, maxRadius) {
 }
 
 /**
+ * Create target tile highlight mesh (yellow preview)
+ * @param {object} THREE - Three.js library
+ * @param {number} x - World X position
+ * @param {number} z - World Z position
+ * @returns {object} Three.js Mesh
+ */
+export function createTargetHighlight(THREE, x, z) {
+    const geometry = new THREE.PlaneGeometry(TILE_SIZE * 0.95, TILE_SIZE * 0.95);
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.6,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.4
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, 0.02, z);
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
+}
+
+/**
  * Create enemy mesh based on type with white outline
  * @param {object} THREE - Three.js library
  * @param {object} enemyConfig - Enemy configuration from constants

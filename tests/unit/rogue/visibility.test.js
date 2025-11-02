@@ -8,8 +8,10 @@ import {
     isTileVisible,
     isTileExplored,
     getTileVisibilityState,
-    filterVisibleEntities
+    filterVisibleEntities,
+    getEffectiveVisibilityRadius
 } from '../../../src/rogue/visibility.js';
+import { createStatusEffect, STATUS_TYPES } from '../../../src/rogue/status-effects.js';
 
 describe('Visibility System', () => {
     describe('computeVisibleTiles', () => {
@@ -207,6 +209,54 @@ describe('Visibility System', () => {
             const visible = filterVisibleEntities(entities, visibleTiles);
             
             expect(visible).toHaveLength(2);
+        });
+    });
+
+    describe('getEffectiveVisibilityRadius', () => {
+        it('should return base radius when no sight effect', () => {
+            // Arrange
+            const effects = [];
+            
+            // Act
+            const radius = getEffectiveVisibilityRadius(effects);
+            
+            // Assert
+            expect(radius).toBe(5); // VISIBILITY_RADIUS default
+        });
+
+        it('should add magnitude to radius when sight effect is active', () => {
+            // Arrange
+            const sightEffect = createStatusEffect(STATUS_TYPES.SIGHT, 10, 5);
+            const effects = [sightEffect];
+            
+            // Act
+            const radius = getEffectiveVisibilityRadius(effects);
+            
+            // Assert
+            expect(radius).toBe(10); // 5 + 5
+        });
+
+        it('should use custom base radius', () => {
+            // Arrange
+            const effects = [];
+            
+            // Act
+            const radius = getEffectiveVisibilityRadius(effects, 8);
+            
+            // Assert
+            expect(radius).toBe(8);
+        });
+
+        it('should add magnitude to custom base radius with sight effect', () => {
+            // Arrange
+            const sightEffect = createStatusEffect(STATUS_TYPES.SIGHT, 10, 3);
+            const effects = [sightEffect];
+            
+            // Act
+            const radius = getEffectiveVisibilityRadius(effects, 8);
+            
+            // Assert
+            expect(radius).toBe(11); // 8 + 3
         });
     });
 });
