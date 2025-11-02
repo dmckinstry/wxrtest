@@ -9,7 +9,6 @@ import {
     ENEMY_TYPES,
     PALETTE,
     ITEM_TYPES,
-    TARGET_PREVIEW_SCALE,
     MIN_ATTRACTED_ENEMIES,
     MAX_ATTRACTED_ENEMIES_RANGE,
     MIN_SPAWN_DISTANCE,
@@ -667,33 +666,36 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
         const moveDelta = calculateMovementDelta(axes, deltaTime, 2.6, gameState.player.rotation);
         const moveDistance = calculateMovementDistance(moveDelta);
         
-        // Update target tile highlight (yellow preview) based on movement direction
-        if (Math.abs(axes.x) > 0.01 || Math.abs(axes.y) > 0.01) {
-            // Calculate target position (1 tile ahead in movement direction)
-            const targetWorldPos = {
-                x: gameState.player.worldPosition.x + moveDelta.dx * TARGET_PREVIEW_SCALE,
-                z: gameState.player.worldPosition.z + moveDelta.dz * TARGET_PREVIEW_SCALE
-            };
-            const targetGridPos = worldToGrid(targetWorldPos.x, targetWorldPos.z);
-            const targetWorld = gridToWorld(targetGridPos.x, targetGridPos.y);
+        // Update target tile highlight (yellow preview) - shows tile in front of player based on facing direction
+        // This is the tile that would be targeted by an attack action
+        const playerRotation = gameState.player.rotation;
+        
+        // Calculate the tile 1 square in front based on facing direction
+        // In Three.js, rotation 0 faces -Z (south), rotation increases counter-clockwise
+        // So: 0 = South, PI/2 = West, PI = North, 3*PI/2 = East
+        const facingDx = Math.round(-Math.sin(playerRotation));
+        const facingDy = Math.round(-Math.cos(playerRotation));
+        
+        const targetGridPos = {
+            x: gameState.player.position.x + facingDx,
+            y: gameState.player.position.y + facingDy
+        };
+        const targetWorld = gridToWorld(targetGridPos.x, targetGridPos.y);
+        
+        // Show highlight if it's within grid bounds and different from current position
+        if (targetGridPos.y >= 0 && targetGridPos.y < dungeon.grid.length &&
+            targetGridPos.x >= 0 && targetGridPos.x < dungeon.grid[0].length &&
+            (targetGridPos.x !== gameState.player.position.x || 
+             targetGridPos.y !== gameState.player.position.y)) {
             
-            // Show highlight if it's a walkable tile and different from current position
-            if (isWalkable(dungeon.grid, targetGridPos.x, targetGridPos.y) &&
-                (targetGridPos.x !== gameState.player.position.x || 
-                 targetGridPos.y !== gameState.player.position.y)) {
-                
-                if (!targetHighlight) {
-                    targetHighlight = createTargetHighlight(THREE, targetWorld.x, targetWorld.z);
-                    scene.add(targetHighlight);
-                } else {
-                    targetHighlight.position.set(targetWorld.x, 0.02, targetWorld.z);
-                    targetHighlight.visible = true;
-                }
-            } else if (targetHighlight) {
-                targetHighlight.visible = false;
+            if (!targetHighlight) {
+                targetHighlight = createTargetHighlight(THREE, targetWorld.x, targetWorld.z);
+                scene.add(targetHighlight);
+            } else {
+                targetHighlight.position.set(targetWorld.x, 0.02, targetWorld.z);
+                targetHighlight.visible = true;
             }
         } else if (targetHighlight) {
-            // Hide highlight when not moving
             targetHighlight.visible = false;
         }
         
@@ -705,8 +707,18 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 z: gameState.player.worldPosition.z + moveDelta.dz
             };
             
-            // Check collision
-            if (checkCollision(newWorldPos, dungeon.grid, worldToGrid, isWalkable)) {
+            // Check collision with walls
+            const gridPos = worldToGrid(newWorldPos.x, newWorldPos.z);
+            const tileWalkable = checkCollision(newWorldPos, dungeon.grid, worldToGrid, isWalkable);
+            
+            // Check collision with monsters (monsters are solid)
+            const monsterAtPosition = gameState.entities.enemies.some(enemy => 
+                enemy.isAlive && 
+                enemy.position.x === gridPos.x && 
+                enemy.position.y === gridPos.y
+            );
+            
+            if (tileWalkable && !monsterAtPosition) {
                 gameState = updatePlayerWorldPosition(gameState, newWorldPos);
                 
                 // Update player mesh
@@ -714,7 +726,6 @@ export function createGame(THREE, scene, camera, renderer, customSeed = null, ke
                 camera.position.set(newWorldPos.x, 1.6, newWorldPos.z);
                 
                 // Update grid position
-                const gridPos = worldToGrid(newWorldPos.x, newWorldPos.z);
                 if (gridPos.x !== gameState.player.position.x || 
                     gridPos.y !== gameState.player.position.y) {
                     gameState = updatePlayerPosition(gameState, gridPos);
