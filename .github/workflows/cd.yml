@@ -9,8 +9,6 @@ on:
       - main
   workflow_run:
     workflows: ["CI"]
-    branches:
-      - deploy-dev
     types:
       - completed
 
