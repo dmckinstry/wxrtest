@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - main
+      - deploy-dev
   workflow_run:
     workflows: ["CI"]
     branches:
