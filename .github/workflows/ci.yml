@@ -1,12 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
 
 jobs:
   test:
@@ -44,3 +39,36 @@ jobs:
           files: ./coverage/coverage-final.json
           flags: unittests
           name: codecov-umbrella
+  
+  merge-to-deploy-dev:
+    name: Merge to deploy-dev
+    runs-on: ubuntu-latest
+    needs: test
+    if: |
+      (github.event_name == 'push' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/deploy-dev') ||
+      (github.event_name == 'pull_request')
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Merge to deploy-dev
+        run: |
+          git fetch origin deploy-dev:deploy-dev || git checkout -b deploy-dev
+          git checkout deploy-dev
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git merge --ff-only ${{ github.event.pull_request.head.sha }}
+          else
+            git merge --ff-only ${{ github.sha }}
+          fi
+          git push origin deploy-dev
