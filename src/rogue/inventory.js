@@ -388,11 +388,25 @@ export function getInventoryDisplay(inventory) {
             return `${letter}) empty`;
         }
         
-        const displayName = item.identified || 
-                           item.type === ITEM_TYPES.WEAPON || 
-                           item.type === ITEM_TYPES.ARMOR
-            ? item.name || item.trueType
-            : item.appearance;
+        let displayName;
+        if (item.identified || item.type === ITEM_TYPES.WEAPON || item.type === ITEM_TYPES.ARMOR) {
+            // For identified items
+            if (item.type === ITEM_TYPES.POTION && item.trueType) {
+                // Format potions with "Potion of X" format
+                const prefix = item.prefix ? (item.prefix.charAt(0).toUpperCase() + item.prefix.slice(1) + ' ') : '';
+                const typeName = item.trueType.charAt(0).toUpperCase() + item.trueType.slice(1);
+                displayName = `${prefix}Potion of ${typeName}`;
+            } else if (item.type === ITEM_TYPES.SCROLL && item.trueType) {
+                // Format scrolls with "Scroll of X" format
+                const typeName = item.trueType.charAt(0).toUpperCase() + item.trueType.slice(1);
+                displayName = `Scroll of ${typeName}`;
+            } else {
+                displayName = item.name || item.trueType;
+            }
+        } else {
+            // For unidentified items, show appearance
+            displayName = item.appearance;
+        }
             
         return `${letter}) ${displayName}`;
     });
